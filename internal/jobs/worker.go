@@ -24,13 +24,24 @@ type jobWorker struct {
 }
 
 func NewJobWorker(ttsService services.TtsService) JobWorker {
-	redisAddr := os.Getenv("REDIS_URL")
-	if redisAddr == "" {
-		redisAddr = "localhost:6379"
+	redisHost := os.Getenv("REDIS_HOST")
+	redisPort := os.Getenv("REDIS_PORT")
+	redisPassword := os.Getenv("REDIS_PASSWORD")
+
+	if redisHost == "" {
+		redisHost = "localhost"
+	}
+	if redisPort == "" {
+		redisPort = "6379"
 	}
 
+	redisAddr := fmt.Sprintf("%s:%s", redisHost, redisPort)
+
 	server := asynq.NewServer(
-		asynq.RedisClientOpt{Addr: redisAddr},
+		asynq.RedisClientOpt{
+			Addr:     redisAddr,
+			Password: redisPassword,
+		},
 		asynq.Config{
 			Concurrency: 10,
 			Queues: map[string]int{
