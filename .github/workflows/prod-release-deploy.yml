@@ -4,10 +4,35 @@ on:
   push:
     branches:
       - prod-release
+  pull_request:
+    branches:
+      - prod-release
+    types: [closed]
 
 jobs:
+  validate-pr-title:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && github.event.pull_request.merged == true
+    steps:
+      - name: Check PR title format
+        run: |
+          PR_TITLE="${{ github.event.pull_request.title }}"
+          echo "Checking PR title: $PR_TITLE"
+          
+          # Check if PR title follows the format "[Type] Description"
+          if [[ ! "$PR_TITLE" =~ ^\[(Major|Minor|Patch|Feature|Fix|Breaking)\]\ .+ ]]; then
+            echo "❌ PR title does not follow the required format '[Type] Description'"
+            echo "Valid types: Major, Minor, Patch, Feature, Fix, Breaking"
+            echo "Example: '[Feature] Add user authentication'"
+            exit 1
+          fi
+          
+          echo "✅ PR title format is valid"
+
   release-and-deploy:
     runs-on: ubuntu-latest
+    needs: validate-pr-title
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.merged == true)
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -22,12 +47,12 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
-      - name: Login to Docker registry
+      - name: Login to Yandex Cloud Container Registry
         uses: docker/login-action@v2
         with:
-          registry: registry.sourcecraft.dev
-          username: ${{ secrets.DOCKER_REGISTRY_USERNAME }}
-          password: ${{ secrets.DOCKER_REGISTRY_PASSWORD }}
+          registry: cr.yandex
+          username: ${{ secrets.YC_REGISTRY_USERNAME }}
+          password: ${{ secrets.YC_REGISTRY_PASSWORD }}
 
       - name: Get current version
         id: current_version
@@ -41,23 +66,56 @@ jobs:
           echo "CURRENT_VERSION=$CURRENT_VERSION" >> $GITHUB_ENV
           echo "Current version: $CURRENT_VERSION"
 
+      - name: Determine version bump type
+        id: version_type
+        run: |
+          # Default to patch version bump
+          VERSION_TYPE="patch"
+          
+          # If this is a PR merge, determine version type from PR title
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            PR_TITLE="${{ github.event.pull_request.title }}"
+            echo "Determining version type from PR title: $PR_TITLE"
+            
+            if [[ "$PR_TITLE" =~ ^\[(Major|Breaking)\]\ .+ ]]; then
+              VERSION_TYPE="major"
+            elif [[ "$PR_TITLE" =~ ^\[(Minor|Feature)\]\ .+ ]]; then
+              VERSION_TYPE="minor"
+            elif [[ "$PR_TITLE" =~ ^\[(Patch|Fix)\]\ .+ ]]; then
+              VERSION_TYPE="patch"
+            fi
+          fi
+          
+          echo "VERSION_TYPE=$VERSION_TYPE" >> $GITHUB_ENV
+          echo "Version bump type: $VERSION_TYPE"
+
       - name: Calculate next version
         id: next_version
         run: |
-          # For now, we'll increment the patch version
-          # In a more advanced setup, we could analyze commits to determine version bump type
           CURRENT_VERSION=$CURRENT_VERSION
           VERSION_PARTS=(${CURRENT_VERSION//./ })
           MAJOR=${VERSION_PARTS[0]}
           MINOR=${VERSION_PARTS[1]}
           PATCH=${VERSION_PARTS[2]}
           
-          # Increment patch version
-          NEW_PATCH=$((PATCH + 1))
-          NEXT_VERSION="$MAJOR.$MINOR.$NEW_PATCH"
+          # Increment version based on type
+          case $VERSION_TYPE in
+            "major")
+              NEW_MAJOR=$((MAJOR + 1))
+              NEXT_VERSION="$NEW_MAJOR.0.0"
+              ;;
+            "minor")
+              NEW_MINOR=$((MINOR + 1))
+              NEXT_VERSION="$MAJOR.$NEW_MINOR.0"
+              ;;
+            "patch"|*)
+              NEW_PATCH=$((PATCH + 1))
+              NEXT_VERSION="$MAJOR.$MINOR.$NEW_PATCH"
+              ;;
+          esac
           
           echo "NEXT_VERSION=$NEXT_VERSION" >> $GITHUB_ENV
-          echo "Next version: $NEXT_VERSION"
+          echo "Next version: $NEXT_VERSION (bumped $VERSION_TYPE)"
 
       - name: Update CHANGELOG.md
         run: |
@@ -90,8 +148,8 @@ jobs:
           platforms: linux/amd64
           push: true
           tags: |
-            registry.sourcecraft.dev/vladbogserg/quokkaq-go-backend:${{ env.NEXT_VERSION }}
-            registry.sourcecraft.dev/vladbogserg/quokkaq-go-backend:latest
+            cr.yandex/${{ secrets.YC_REGISTRY_ID }}/quokkaq-backend:${{ env.NEXT_VERSION }}
+            cr.yandex/${{ secrets.YC_REGISTRY_ID }}/quokkaq-backend:latest
 
       - name: Create Git tag
         run: |
@@ -104,11 +162,10 @@ jobs:
 
       - name: Deploy to Yandex Cloud VM
         run: |
-          # This is a simplified deployment process
-          # In a real scenario, you would use Yandex Cloud CLI or SSH deployment
+          # Deploy to Yandex Cloud VM
           echo "Deploying version $NEXT_VERSION to Yandex Cloud VM (ID: fhmf3i36jq46rgl67sme)"
           
-          # Example deployment steps (these would need to be adapted for your specific setup):
+          # Example deployment steps:
           # 1. SSH into the VM
           # 2. Pull the new Docker image
           # 3. Stop current containers
@@ -117,7 +174,7 @@ jobs:
           
           echo "Deployment steps would include:"
           echo "1. Connecting to Yandex Cloud VM (ID: fhmf3i36jq46rgl67sme)"
-          echo "2. Pulling Docker image: registry.sourcecraft.dev/vladbogserg/quokkaq-go-backend:$NEXT_VERSION"
+          echo "2. Pulling Docker image: cr.yandex/${{ secrets.YC_REGISTRY_ID }}/quokkaq-backend:$NEXT_VERSION"
           echo "3. Stopping current services"
           echo "4. Starting new services with updated image"
           echo "5. Running database migrations if needed"
@@ -137,6 +194,7 @@ jobs:
             
             ## Changelog
             - Automated release from prod-release branch
+            - Version bump type: ${{ env.VERSION_TYPE }}
             - Version bump from ${{ env.CURRENT_VERSION }} to ${{ env.NEXT_VERSION }}
           draft: false
           prerelease: false
@@ -146,4 +204,5 @@ jobs:
         run: |
           echo "✅ Production release $NEXT_VERSION deployed successfully to Yandex Cloud VM"
           echo "Version: $NEXT_VERSION"
+          echo "Version bump type: $VERSION_TYPE"
           echo "VM ID: fhmf3i36jq46rgl67sme"
