@@ -93,10 +93,13 @@ jobs:
 
       - name: Deploy to VM
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          YC_SA_JSON_CREDENTIALS: ${{ secrets.YC_SA_JSON_CREDENTIALS }}
         with:
           host: ${{ secrets.VM_HOST }}
           username: ${{ secrets.VM_USERNAME }}
           key: ${{ secrets.VM_SSH_KEY }}
+          envs: YC_SA_JSON_CREDENTIALS
           script: |
             export YC_REGISTRY_ID=${{ secrets.YC_REGISTRY_ID }}
             export TAG=${{ needs.version-bump.outputs.new_version }}
@@ -119,7 +122,7 @@ jobs:
 
             echo "Deploying backend version $TAG"
             
-            echo ${{ secrets.YC_SA_JSON_CREDENTIALS }} | docker login --username json_key --password-stdin cr.yandex
+            echo "$YC_SA_JSON_CREDENTIALS" | docker login --username json_key --password-stdin cr.yandex
             
             docker pull cr.yandex/$YC_REGISTRY_ID/quokkaq-backend:$TAG
             
