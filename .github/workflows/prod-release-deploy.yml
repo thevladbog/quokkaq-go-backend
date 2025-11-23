@@ -166,7 +166,8 @@ jobs:
           export PATH="$HOME/yandex-cloud/bin:$PATH"
           hash -r || true
           echo "yc path: $(which yc 2>/dev/null || echo 'not found')"
-          echo "${{ secrets.YC_SERVICE_ACCOUNT_KEY }}" > service-account-key.json
+          # Write the service account key safely (preserve newlines and JSON structure)
+          printf '%s' "${{ secrets.YC_SERVICE_ACCOUNT_KEY }}" > service-account-key.json
           "$HOME/yandex-cloud/bin/yc" config set service-account-key service-account-key.json
           
           # SSH into VM and deploy
