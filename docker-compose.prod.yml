@@ -77,7 +77,13 @@ services:
     container_name: quokkaq-backend
     restart: unless-stopped
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-quokkaq}
+      # Database Configuration
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: ${POSTGRES_USER:-postgres}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_NAME: ${POSTGRES_DB:-quokkaq}
+      DB_SSLMODE: disable
       PORT: 3001
       APP_BASE_URL: ${APP_BASE_URL:-https://quokkaq.v-b.tech}
       
