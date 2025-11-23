@@ -4,6 +4,10 @@ on:
   push:
     branches:
       - prod-release
+  pull_request:
+    branches:
+      - prod-release
+    types: [closed]
 
 jobs:
   release-and-deploy:
