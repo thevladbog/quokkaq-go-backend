@@ -36,7 +36,6 @@ func NewJobWorker(ttsService services.TtsService) JobWorker {
 	}
 
 	redisAddr := fmt.Sprintf("%s:%s", redisHost, redisPort)
-	fmt.Printf("DEBUG: Redis Config: Host='%s', Port='%s', Addr='%s'\n", redisHost, redisPort, redisAddr)
 
 	server := asynq.NewServer(
 		asynq.RedisClientOpt{
