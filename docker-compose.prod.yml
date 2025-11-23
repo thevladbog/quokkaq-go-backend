@@ -125,9 +125,7 @@ services:
 
   # QuokkaQ Backend API
   backend:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: cr.yandex/${YC_REGISTRY_ID}/quokkaq-backend:${TAG}
     container_name: quokkaq-backend
     restart: unless-stopped
     environment:

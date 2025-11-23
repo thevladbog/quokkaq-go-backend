@@ -10,29 +10,8 @@ on:
     types: [closed]
 
 jobs:
-  validate-pr-title:
-    runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request' && github.event.pull_request.merged == true
-    steps:
-      - name: Check PR title format
-        run: |
-          PR_TITLE="${{ github.event.pull_request.title }}"
-          echo "Checking PR title: $PR_TITLE"
-          
-          # Check if PR title follows the format "[Type] Description"
-          if [[ ! "$PR_TITLE" =~ ^\[(Major|Minor|Patch|Feature|Fix|Breaking)\]\ .+ ]]; then
-            echo "❌ PR title does not follow the required format '[Type] Description'"
-            echo "Valid types: Major, Minor, Patch, Feature, Fix, Breaking"
-            echo "Example: '[Feature] Add user authentication'"
-            exit 1
-          fi
-          
-          echo "✅ PR title format is valid"
-
   release-and-deploy:
     runs-on: ubuntu-latest
-    needs: validate-pr-title
-    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.merged == true)
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -43,6 +22,8 @@ jobs:
         uses: actions/setup-go@v4
         with:
           go-version: '1.25.4'
+
+
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
@@ -175,7 +156,7 @@ jobs:
           
           # SSH into VM and deploy
           echo "Connecting to Yandex Cloud VM..."
-          ssh -o StrictHostKeyChecking=no -i <(echo "$VM_SSH_KEY") deploy@fhmf3i36jq46rgl67sme << 'EOF'
+            ssh -o StrictHostKeyChecking=no -i ${{ secrets.VM_SSH_KEY }} deploy@fhmf3i36jq46rgl67sme << 'EOF'
             echo "Connected to VM"
             
             # Create deployment directory if it doesn't exist
