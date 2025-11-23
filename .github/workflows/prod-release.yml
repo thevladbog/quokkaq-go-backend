@@ -131,6 +131,9 @@ jobs:
             # We use --env-file /dev/null to avoid looking for a .env file if we pass everything via export
             # But docker compose usually picks up env vars from shell.
             
+            # Ensure traefik-public network exists
+            docker network create traefik-public || true
+            
             docker compose -f docker-compose.prod.yml up -d --remove-orphans
             
             # Run migrations
