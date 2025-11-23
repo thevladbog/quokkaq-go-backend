@@ -14,6 +14,24 @@ Before setting up the deployment infrastructure, ensure you have:
 2. A created VM with ID: `fhmf3i36jq46rgl67sme`
 3. Network access to the VM
 4. A service account with necessary permissions
+5. A Container Registry set up in Yandex Cloud
+
+## Container Registry Setup
+
+### Create Container Registry
+
+1. In the Yandex Cloud Console, navigate to the Container Registry section
+2. Create a new container registry
+3. Note the registry ID for use in the CI/CD pipeline
+
+### Configure Registry Access
+
+1. Create an IAM token for the service account with registry access:
+   ```bash
+   yc iam key create --service-account-name <service-account-name> --output key.json
+   ```
+
+2. Store the full JSON content of the key file and provide it to the CI/CD pipeline as `YC_REGISTRY_PASSWORD`.
 
 ## VM Configuration
 
@@ -57,13 +75,18 @@ Install the following software on the VM:
    sudo apt-get install docker-ce docker-ce-cli containerd.io docker-compose-plugin
    ```
 
-2. **Docker Compose** (if not included with Docker Engine):
+2. **Yandex Cloud CLI** (for registry authentication):
+   ```bash
+   curl https://storage.yandexcloud.net/yandexcloud-yc/install.sh | bash
+   ```
+
+3. **Docker Compose** (if not included with Docker Engine):
    ```bash
    # Install Docker Compose
    sudo apt install docker-compose-plugin
    ```
 
-3. **SSH Access**:
+4. **SSH Access**:
    Ensure SSH access is configured for the CI/CD pipeline to connect to the VM.
 
 ### User Permissions
@@ -91,6 +114,7 @@ sudo chmod 600 /home/deploy/.ssh/authorized_keys
 
 1. In the Yandex Cloud Console, navigate to the IAM section
 2. Create a new service account with the following roles:
+   - `container-registry.images.puller` - for pulling images from Container Registry
    - `compute.admin` - for VM management
    - `iam.serviceAccounts.user` - for service account management
    - `vpc.publicAdmin` - for network management (if needed)
@@ -102,7 +126,7 @@ sudo chmod 600 /home/deploy/.ssh/authorized_keys
    yc iam key create --service-account-name <service-account-name> --output key.json
    ```
 
-2. Store the key securely and provide it to the CI/CD pipeline as `YC_SERVICE_ACCOUNT_KEY`.
+2. Store the full JSON content of the key file and provide it to the CI/CD pipeline as `YC_SERVICE_ACCOUNT_KEY`.
 
 ## Environment Configuration
 
@@ -138,11 +162,11 @@ These variables can be stored in a `.env` file in the deployment directory.
 
 ### Docker Registry Authentication
 
-Configure Docker to authenticate with the registry:
+Configure Docker to authenticate with Yandex Cloud Container Registry:
 
 ```bash
-# Login to the Docker registry
-docker login registry.sourcecraft.dev -u $DOCKER_REGISTRY_USERNAME -p $DOCKER_REGISTRY_PASSWORD
+# Login to Yandex Cloud Container Registry
+echo $YC_REGISTRY_PASSWORD | docker login --username $YC_REGISTRY_USERNAME --password-stdin cr.yandex
 ```
 
 This should be done as the deploy user.
@@ -172,8 +196,11 @@ Create a deployment script at `/home/deploy/scripts/deploy.sh`:
 # Load environment variables
 source /home/deploy/quokkaq/.env
 
+# Authenticate with Yandex Cloud Container Registry
+echo $YC_REGISTRY_PASSWORD | docker login --username $YC_REGISTRY_USERNAME --password-stdin cr.yandex
+
 # Pull the latest Docker image
-docker pull registry.sourcecraft.dev/vladbogserg/quokkaq-go-backend:$1
+docker pull cr.yandex/$YC_REGISTRY_ID/quokkaq-backend:$1
 
 # Stop current services
 docker compose -f /home/deploy/quokkaq/docker-compose.yml down
@@ -283,7 +310,7 @@ services:
 
   # QuokkaQ Backend API
   backend:
-    image: registry.sourcecraft.dev/vladbogserg/quokkaq-go-backend:${TAG:-latest}
+    image: cr.yandex/${YC_REGISTRY_ID}/quokkaq-backend:${TAG:-latest}
     container_name: quokkaq-backend
     restart: unless-stopped
     ports:
