@@ -136,9 +136,5 @@ jobs:
             
             docker compose -f docker-compose.prod.yml up -d --remove-orphans
             
-            # Run migrations
-            # Wait a bit for DB to be ready if it was just started (though depends_on handles start order, not readiness for app logic)
-            sleep 5
-            docker compose -f docker-compose.prod.yml exec -T backend ./quokkaq-backend -migrate
-            
             docker image prune -f
+
