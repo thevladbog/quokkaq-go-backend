@@ -23,13 +23,30 @@ jobs:
         with:
           node-version: '20'
 
+      - name: Determine version bump type
+        id: version_type
+        run: |
+          COMMIT_MSG=$(git log -1 --pretty=%B)
+          echo "Commit message: $COMMIT_MSG"
+          
+          if [[ "$COMMIT_MSG" == *"[major]"* ]] || [[ "$COMMIT_MSG" == *"BREAKING CHANGE"* ]]; then
+            echo "type=major" >> $GITHUB_OUTPUT
+          elif [[ "$COMMIT_MSG" == *"[minor]"* ]] || [[ "$COMMIT_MSG" == *"feat:"* ]]; then
+            echo "type=minor" >> $GITHUB_OUTPUT
+          else
+            echo "type=patch" >> $GITHUB_OUTPUT
+          fi
+
       - name: Bump version
         id: bump
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
           
-          NEW_VERSION=$(node scripts/bump-version.js)
+          TYPE=${{ steps.version_type.outputs.type }}
+          echo "Bumping version type: $TYPE"
+          
+          NEW_VERSION=$(node scripts/bump-version.js $TYPE)
           echo "New version: $NEW_VERSION"
           echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
           
@@ -72,6 +89,7 @@ jobs:
           key: ${{ secrets.VM_SSH_KEY }}
           source: "docker-compose.prod.yml"
           target: "~/quokkaq-backend/"
+          debug: true
 
       - name: Deploy to VM
         uses: appleboy/ssh-action@v1.0.3
