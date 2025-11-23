@@ -1,5 +1,8 @@
 name: Production Release and Deploy
 
+permissions:
+  contents: write
+
 on:
   pull_request:
     branches:
@@ -130,15 +133,23 @@ jobs:
             cr.yandex/${{ secrets.YC_REGISTRY_ID }}/quokkaq-backend:latest
 
       - name: Create Git tag
-        env:
-          GH_PAT: ${{ secrets.GH_PAT }}
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          git remote set-url origin https://thevladbog:${GH_PAT}@github.com/thevladbog/quokkaq-go-backend.git
           git add .
-          git commit -m "Release version $NEXT_VERSION"
-          git tag -a "v$NEXT_VERSION" -m "Release version $NEXT_VERSION"
+          # Commit only if there are staged changes
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Release version $NEXT_VERSION"
+          fi
+          # Create tag if it doesn't already exist
+          if git rev-parse -q --verify "refs/tags/v$NEXT_VERSION" >/dev/null; then
+            echo "Tag v$NEXT_VERSION already exists"
+          else
+            git tag -a "v$NEXT_VERSION" -m "Release version $NEXT_VERSION"
+          fi
+          # Push tag using the checkout-provided credentials (GITHUB_TOKEN)
           git push origin "v$NEXT_VERSION"
 
       - name: Deploy to Yandex Cloud VM
