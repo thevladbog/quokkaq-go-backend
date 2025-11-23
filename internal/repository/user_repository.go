@@ -9,7 +9,7 @@ import (
 
 type UserRepository interface {
 	Create(user *models.User) error
-	FindAll() ([]models.User, error)
+	FindAll(search string) ([]models.User, error)
 	FindByID(id string) (*models.User, error)
 	FindByEmail(email string) (*models.User, error)
 	Update(user *models.User) error
@@ -18,6 +18,10 @@ type UserRepository interface {
 	RemoveUnit(userID, unitID string) error
 	AssignRole(userID, roleID string) error
 	FindRoleByName(name string) (*models.Role, error)
+	CreatePasswordResetToken(token *models.PasswordResetToken) error
+	FindPasswordResetToken(token string) (*models.PasswordResetToken, error)
+	DeletePasswordResetToken(id string) error
+	Count() (int64, error)
 }
 
 type userRepository struct {
@@ -32,9 +36,16 @@ func (r *userRepository) Create(user *models.User) error {
 	return r.db.Create(user).Error
 }
 
-func (r *userRepository) FindAll() ([]models.User, error) {
+func (r *userRepository) FindAll(search string) ([]models.User, error) {
 	var users []models.User
-	err := r.db.Preload("Roles.Role").Preload("Units.Unit").Preload("Units").Find(&users).Error
+	query := r.db.Preload("Roles.Role").Preload("Units.Unit").Preload("Units")
+
+	if search != "" {
+		searchTerm := "%" + search + "%"
+		query = query.Where("name ILIKE ? OR email ILIKE ?", searchTerm, searchTerm)
+	}
+
+	err := query.Find(&users).Error
 	return users, err
 }
 
@@ -92,4 +103,27 @@ func (r *userRepository) FindRoleByName(name string) (*models.Role, error) {
 
 func (r *userRepository) RemoveUnit(userID, unitID string) error {
 	return r.db.Delete(&models.UserUnit{}, "user_id = ? AND unit_id = ?", userID, unitID).Error
+}
+
+func (r *userRepository) CreatePasswordResetToken(token *models.PasswordResetToken) error {
+	return r.db.Create(token).Error
+}
+
+func (r *userRepository) FindPasswordResetToken(token string) (*models.PasswordResetToken, error) {
+	var resetToken models.PasswordResetToken
+	err := r.db.Preload("User").First(&resetToken, "token = ?", token).Error
+	if err != nil {
+		return nil, err
+	}
+	return &resetToken, nil
+}
+
+func (r *userRepository) DeletePasswordResetToken(id string) error {
+	return r.db.Delete(&models.PasswordResetToken{}, "id = ?", id).Error
+}
+
+func (r *userRepository) Count() (int64, error) {
+	var count int64
+	err := r.db.Model(&models.User{}).Count(&count).Error
+	return count, err
 }

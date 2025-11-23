@@ -53,7 +53,8 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 // @Failure      500  {string}  string "Internal Server Error"
 // @Router       /users [get]
 func (h *UserHandler) GetAllUsers(w http.ResponseWriter, r *http.Request) {
-	users, err := h.service.GetAllUsers()
+	search := r.URL.Query().Get("search")
+	users, err := h.service.GetAllUsers(search)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -208,4 +209,53 @@ func (h *UserHandler) GetUserUnits(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	json.NewEncoder(w).Encode(user.Units)
+}
+
+// GetSystemStatus godoc
+// @Summary      Get system status
+// @Description  Checks if the system is initialized (has users)
+// @Tags         system
+// @Produce      json
+// @Success      200  {object}  map[string]bool
+// @Failure      500  {string}  string "Internal Server Error"
+// @Router       /system/status [get]
+func (h *UserHandler) GetSystemStatus(w http.ResponseWriter, r *http.Request) {
+	initialized, err := h.service.IsSystemInitialized()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	json.NewEncoder(w).Encode(map[string]bool{"initialized": initialized})
+}
+
+// SetupFirstAdmin godoc
+// @Summary      Setup first admin
+// @Description  Creates the first administrator if the system is not initialized
+// @Tags         system
+// @Accept       json
+// @Produce      json
+// @Param        user body models.User true "User Data"
+// @Success      201  {object}  models.User
+// @Failure      400  {string}  string "Bad Request"
+// @Failure      403  {string}  string "Forbidden - System already initialized"
+// @Failure      500  {string}  string "Internal Server Error"
+// @Router       /system/setup [post]
+func (h *UserHandler) SetupFirstAdmin(w http.ResponseWriter, r *http.Request) {
+	var user models.User
+	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if err := h.service.CreateFirstAdmin(&user); err != nil {
+		if err.Error() == "system is already initialized" {
+			http.Error(w, err.Error(), http.StatusForbidden)
+			return
+		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(user)
 }

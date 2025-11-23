@@ -11,13 +11,15 @@ import (
 
 type UserService interface {
 	CreateUser(user *models.User) error
-	GetAllUsers() ([]models.User, error)
+	GetAllUsers(search string) ([]models.User, error)
 	GetUserByID(id string) (*models.User, error)
 	UpdateUser(user *models.User) error
 	DeleteUser(id string) error
 	AssignUnit(userID, unitID string, permissions []string) error
 	RemoveUnit(userID, unitID string) error
 	AssignRole(userID, roleID string) error
+	IsSystemInitialized() (bool, error)
+	CreateFirstAdmin(user *models.User) error
 }
 
 type userService struct {
@@ -54,8 +56,8 @@ func (s *userService) CreateUser(user *models.User) error {
 	return s.repo.Create(user)
 }
 
-func (s *userService) GetAllUsers() ([]models.User, error) {
-	return s.repo.FindAll()
+func (s *userService) GetAllUsers(search string) ([]models.User, error) {
+	return s.repo.FindAll(search)
 }
 
 func (s *userService) GetUserByID(id string) (*models.User, error) {
@@ -88,4 +90,37 @@ func (s *userService) AssignRole(userID, roleID string) error {
 
 func (s *userService) RemoveUnit(userID, unitID string) error {
 	return s.repo.RemoveUnit(userID, unitID)
+}
+
+func (s *userService) IsSystemInitialized() (bool, error) {
+	count, err := s.repo.Count()
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
+func (s *userService) CreateFirstAdmin(user *models.User) error {
+	// 1. Check if system is already initialized
+	initialized, err := s.IsSystemInitialized()
+	if err != nil {
+		return err
+	}
+	if initialized {
+		return errors.New("system is already initialized")
+	}
+
+	// 2. Find Admin Role
+	adminRole, err := s.repo.FindRoleByName("Admin")
+	if err != nil {
+		return errors.New("admin role not found")
+	}
+
+	// 3. Create User
+	if err := s.CreateUser(user); err != nil {
+		return err
+	}
+
+	// 4. Assign Admin Role
+	return s.AssignRole(user.ID, adminRole.ID)
 }

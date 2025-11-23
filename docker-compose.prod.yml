@@ -1,58 +1,6 @@
 version: '3.8'
 
 services:
-  # Traefik Reverse Proxy
-  traefik:
-    image: traefik:v3.0
-    container_name: quokkaq-traefik
-    restart: unless-stopped
-    command:
-      # Traefik configuration
-      - "--api.dashboard=true"
-      - "--api.insecure=false"
-      
-      # Docker provider
-      - "--providers.docker=true"
-      - "--providers.docker.exposedbydefault=false"
-      - "--providers.docker.network=traefik-public"
-      
-      # Entrypoints
-      - "--entrypoints.web.address=:80"
-      - "--entrypoints.websecure.address=:443"
-      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
-      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
-      
-      # Let's Encrypt
-      - "--certificatesresolvers.letsencrypt.acme.tlschallenge=true"
-      - "--certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL}"
-      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
-      # Uncomment for testing (uses staging server):
-      # - "--certificatesresolvers.letsencrypt.acme.caserver=https://acme-staging-v02.api.letsencrypt.org/directory"
-      
-      # Logging
-      - "--log.level=INFO"
-      - "--accesslog=true"
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - traefik_letsencrypt:/letsencrypt
-    networks:
-      - traefik-public
-      - quokkaq-network
-    labels:
-      # Traefik dashboard (optional, comment out in production if not needed)
-      - "traefik.enable=true"
-      - "traefik.http.routers.traefik-dashboard.rule=Host(`traefik.quokkaq.v-b.tech`)"
-      - "traefik.http.routers.traefik-dashboard.entrypoints=websecure"
-      - "traefik.http.routers.traefik-dashboard.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.traefik-dashboard.service=api@internal"
-      - "traefik.http.routers.traefik-dashboard.middlewares=auth"
-      # Basic auth for dashboard (user: admin, password: change-this - generate your own!)
-      # Generate: echo $(htpasswd -nb admin your-password) | sed -e s/\\$/\\$\\$/g
-      - "traefik.http.middlewares.auth.basicauth.users=admin:$$apr1$$8evjzs0r$$I7.UPGPJXm/yNpGRBFICb."
-
   # PostgreSQL Database
   postgres:
     image: postgres:16-alpine
@@ -205,5 +153,4 @@ volumes:
     driver: local
   minio_data:
     driver: local
-  traefik_letsencrypt:
-    driver: local
+

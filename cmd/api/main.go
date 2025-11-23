@@ -61,6 +61,7 @@ func main() {
 		&models.UnitMaterial{},
 		&models.Invitation{},
 		&models.MessageTemplate{},
+		&models.PasswordResetToken{},
 	)
 
 	// WebSocket Hub
@@ -91,14 +92,14 @@ func main() {
 
 	// Services
 	userService := services.NewUserService(userRepo)
-	authService := services.NewAuthService(userRepo)
+	mailService := services.NewMailService()
+	authService := services.NewAuthService(userRepo, mailService)
 	unitService := services.NewUnitService(unitRepo)
 	ticketService := services.NewTicketService(ticketRepo, counterRepo, serviceRepo, hub, jobClient)
 	serviceService := services.NewServiceService(serviceRepo)
 	counterService := services.NewCounterService(counterRepo, ticketRepo, userRepo)
 	bookingService := services.NewBookingService(bookingRepo)
 	shiftService := services.NewShiftService(ticketRepo, counterRepo)
-	mailService := services.NewMailService()
 	templateService := services.NewTemplateService(templateRepo)
 	invitationService := services.NewInvitationService(invitationRepo, mailService, userRepo)
 
@@ -166,12 +167,19 @@ func main() {
 
 	r.Route("/auth", func(r chi.Router) {
 		r.Post("/login", authHandler.Login)
+		r.Post("/forgot-password", authHandler.RequestPasswordReset)
+		r.Post("/reset-password", authHandler.ResetPassword)
 
 		// Protected routes
 		r.Group(func(r chi.Router) {
 			r.Use(authmiddleware.JWTAuth)
 			r.Get("/me", authHandler.GetMe)
 		})
+	})
+
+	r.Route("/system", func(r chi.Router) {
+		r.Get("/status", userHandler.GetSystemStatus)
+		r.Post("/setup", userHandler.SetupFirstAdmin)
 	})
 
 	r.Route("/users", func(r chi.Router) {
