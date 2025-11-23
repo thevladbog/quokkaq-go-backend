@@ -2,6 +2,7 @@ package jobs
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 
 	"quokkaq-go-backend/internal/services"
@@ -19,11 +20,23 @@ type jobClient struct {
 }
 
 func NewJobClient() JobClient {
-	redisAddr := os.Getenv("REDIS_URL")
-	if redisAddr == "" {
-		redisAddr = "localhost:6379"
+	redisHost := os.Getenv("REDIS_HOST")
+	redisPort := os.Getenv("REDIS_PORT")
+	redisPassword := os.Getenv("REDIS_PASSWORD")
+
+	if redisHost == "" {
+		redisHost = "localhost"
 	}
-	client := asynq.NewClient(asynq.RedisClientOpt{Addr: redisAddr})
+	if redisPort == "" {
+		redisPort = "6379"
+	}
+
+	redisAddr := fmt.Sprintf("%s:%s", redisHost, redisPort)
+
+	client := asynq.NewClient(asynq.RedisClientOpt{
+		Addr:     redisAddr,
+		Password: redisPassword,
+	})
 	return &jobClient{client: client}
 }
 
