@@ -32,6 +32,7 @@ func NewJobClient() JobClient {
 	}
 
 	redisAddr := fmt.Sprintf("%s:%s", redisHost, redisPort)
+	fmt.Printf("DEBUG: Redis Client Config: Host='%s', Port='%s', Addr='%s'\n", redisHost, redisPort, redisAddr)
 
 	client := asynq.NewClient(asynq.RedisClientOpt{
 		Addr:     redisAddr,
