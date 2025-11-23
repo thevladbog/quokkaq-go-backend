@@ -162,8 +162,12 @@ jobs:
           echo "Yandex Cloud CLI installed"
           
           # Configure Yandex Cloud CLI with service account key
+          # Make sure `yc` is available in the current shell (installer updates ~/.bashrc)
+          export PATH="$HOME/yandex-cloud/bin:$PATH"
+          hash -r || true
+          echo "yc path: $(which yc 2>/dev/null || echo 'not found')"
           echo "${{ secrets.YC_SERVICE_ACCOUNT_KEY }}" > service-account-key.json
-          yc config set service-account-key service-account-key.json
+          "$HOME/yandex-cloud/bin/yc" config set service-account-key service-account-key.json
           
           # SSH into VM and deploy
           echo "Connecting to Yandex Cloud VM..."
