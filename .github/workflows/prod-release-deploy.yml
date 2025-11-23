@@ -125,21 +125,21 @@ jobs:
           # Add new unreleased section for next version
           sed -i "1i## [Unreleased]
 
-### Added
-### Changed
-### Deprecated
-### Removed
-### Fixed
-### Security
+          ### Added
+          ### Changed
+          ### Deprecated
+          ### Removed
+          ### Fixed
+          ### Security
 
-## [$NEXT_VERSION] - $(date +%Y-%m-%d)
-" CHANGELOG.md
+          ## [$NEXT_VERSION] - $(date +%Y-%m-%d)
+          " CHANGELOG.md
 
       - name: Update go.mod with version
         run: |
           # Add version comment to go.mod
           sed -i "1i// Version: $CURRENT_VERSION
-" go.mod
+          " go.mod
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v4
