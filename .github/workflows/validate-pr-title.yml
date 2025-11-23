@@ -1,3 +1,4 @@
+
 name: Validate PR Title
 
 on:
@@ -5,6 +6,10 @@ on:
     branches:
       - prod-release
     types: [opened, edited, synchronize]
+
+permissions:
+  pull-requests: write
+  issues: write
 
 jobs:
   validate-pr-title:
