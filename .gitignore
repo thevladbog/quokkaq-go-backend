@@ -9,7 +9,6 @@ __pycache__/
 *.dll
 *.so
 *.dylib
-api
 api.exe
 quokkaq-backend
 quokkaq-backend.exe
@@ -33,6 +32,7 @@ vendor/
 .env
 .env.local
 .env.*.local
+.env.prod
 
 # IDE and editor files
 .vscode/

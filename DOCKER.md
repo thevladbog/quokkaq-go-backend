@@ -116,9 +116,44 @@ docker volume rm quokkaq-go-backend_minio_data
 docker-compose up -d minio
 ```
 
-## Production Deployment
+## Production Deployment with Traefik
 
-For production, modify `docker-compose.yml`:
+### Using docker-compose.prod.yml
+
+For production deployment with automatic SSL:
+
+```bash
+# 1. Create Traefik network
+docker network create traefik-public
+
+# 2. Configure environment
+cp .env.prod.example .env.prod
+nano .env.prod  # Set your production values
+
+# 3. Deploy with Traefik
+docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
+```
+
+**Features**:
+- ✅ Automatic SSL via Let's Encrypt
+- ✅ HTTP → HTTPS redirect
+- ✅ Traefik reverse proxy
+- ✅ Security headers
+- ✅ CORS middleware
+
+**DNS Required** (point to server IP):
+- `api.quokkaq.v-b.tech` - Backend API
+- `s3.quokkaq.v-b.tech` - MinIO S3 API
+- `minio.quokkaq.v-b.tech` - MinIO Console
+- `traefik.quokkaq.v-b.tech` - Traefik Dashboard (optional)
+
+**See Also**:
+- [TRAEFIK.md](TRAEFIK.md) - Detailed Traefik configuration
+- [DEPLOYMENT.md](DEPLOYMENT.md) - Full deployment guide
+
+### Manual Production Setup
+
+Without Traefik, modify `docker-compose.yml`:
 
 1. Remove port exposures for postgres/redis
 2. Use strong passwords (environment variables)
