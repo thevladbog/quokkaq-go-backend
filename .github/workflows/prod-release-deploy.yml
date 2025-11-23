@@ -165,22 +165,69 @@ jobs:
           # Deploy to Yandex Cloud VM
           echo "Deploying version $NEXT_VERSION to Yandex Cloud VM (ID: fhmf3i36jq46rgl67sme)"
           
-          # Example deployment steps:
-          # 1. SSH into the VM
-          # 2. Pull the new Docker image
-          # 3. Stop current containers
-          # 4. Start new containers with the updated image
-          # 5. Run database migrations if needed
+          # Install Yandex Cloud CLI
+          curl -sSL https://storage.yandexcloud.net/yandexcloud-yc/install.sh | bash
+          echo "Yandex Cloud CLI installed"
           
-          echo "Deployment steps would include:"
-          echo "1. Connecting to Yandex Cloud VM (ID: fhmf3i36jq46rgl67sme)"
-          echo "2. Pulling Docker image: cr.yandex/${{ secrets.YC_REGISTRY_ID }}/quokkaq-backend:$NEXT_VERSION"
-          echo "3. Stopping current services"
-          echo "4. Starting new services with updated image"
-          echo "5. Running database migrations if needed"
+          # Configure Yandex Cloud CLI with service account key
+          echo "${{ secrets.YC_SERVICE_ACCOUNT_KEY }}" > service-account-key.json
+          yc config set service-account-key service-account-key.json
           
-          # Placeholder for actual deployment
-          echo "DEPLOYMENT_STATUS=success" >> $GITHUB_ENV
+          # SSH into VM and deploy
+          echo "Connecting to Yandex Cloud VM..."
+          ssh -o StrictHostKeyChecking=no -i <(echo "$VM_SSH_KEY") deploy@fhmf3i36jq46rgl67sme << 'EOF'
+            echo "Connected to VM"
+            
+            # Create deployment directory if it doesn't exist
+            mkdir -p /home/deploy/quokkaq
+            cd /home/deploy/quokkaq
+            
+            # Create .env.prod file with production variables
+            cat > .env.prod << 'ENV_END'
+          ACME_EMAIL=${{ secrets.ACME_EMAIL }}
+          POSTGRES_USER=${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+          POSTGRES_DB=${{ secrets.POSTGRES_DB }}
+          REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}
+          MINIO_ROOT_USER=${{ secrets.MINIO_ROOT_USER }}
+          MINIO_ROOT_PASSWORD=${{ secrets.MINIO_ROOT_PASSWORD }}
+          AWS_S3_BUCKET=${{ secrets.AWS_S3_BUCKET }}
+          SMTP_HOST=${{ secrets.SMTP_HOST }}
+          SMTP_PORT=${{ secrets.SMTP_PORT }}
+          SMTP_USER=${{ secrets.SMTP_USER }}
+          SMTP_PASS=${{ secrets.SMTP_PASS }}
+          SMTP_FROM=${{ secrets.SMTP_FROM }}
+          SMTP_SECURE=${{ secrets.SMTP_SECURE }}
+          JWT_SECRET=${{ secrets.JWT_SECRET }}
+          APP_BASE_URL=${{ secrets.APP_BASE_URL }}
+          ENV_END
+            
+            # Pull the new Docker image
+            echo "Pulling Docker image: cr.yandex/${{ secrets.YC_REGISTRY_ID }}/quokkaq-backend:${{ env.NEXT_VERSION }}"
+            docker pull cr.yandex/${{ secrets.YC_REGISTRY_ID }}/quokkaq-backend:${{ env.NEXT_VERSION }}
+            
+            # Stop current services
+            echo "Stopping current services..."
+            docker compose -f docker-compose.prod.yml --env-file .env.prod down
+            
+            # Start new services with the updated image
+            echo "Starting new services..."
+            TAG=${{ env.NEXT_VERSION }} docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
+            
+            # Run database migrations
+            echo "Running database migrations..."
+            sleep 10
+            docker compose -f docker-compose.prod.yml --env-file .env.prod exec backend ./migrate
+            
+            # Check service health
+            echo "Checking service health..."
+            sleep 30
+            curl -f http://localhost:3001/ || echo "Health check failed"
+            
+            echo "Deployment completed successfully"
+          EOF
+          
+          echo "✅ Deployment to Yandex Cloud VM completed"
 
       - name: Create GitHub Release
         uses: actions/create-release@v1

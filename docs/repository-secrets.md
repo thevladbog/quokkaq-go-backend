@@ -17,6 +17,22 @@ The following secrets must be configured in the repository settings:
 | `YC_REGISTRY_ID` | Yandex Cloud Container Registry ID | From Yandex Cloud Console |
 | `YC_SERVICE_ACCOUNT_KEY` | Yandex Cloud service account key | JSON key file for the service account |
 | `VM_SSH_KEY` | SSH private key for accessing the Yandex Cloud VM | Generate SSH key pair for VM access |
+| `ACME_EMAIL` | Email for Let's Encrypt SSL certificates | Your email address |
+| `POSTGRES_USER` | PostgreSQL username | Choose a secure username |
+| `POSTGRES_PASSWORD` | PostgreSQL password | Generate a strong password |
+| `POSTGRES_DB` | PostgreSQL database name | Usually `quokkaq` |
+| `REDIS_PASSWORD` | Redis password | Generate a strong password |
+| `MINIO_ROOT_USER` | MinIO root username | Choose a secure username |
+| `MINIO_ROOT_PASSWORD` | MinIO root password | Generate a strong password |
+| `AWS_S3_BUCKET` | S3 bucket name | Usually `quokkaq-materials` |
+| `SMTP_HOST` | SMTP server hostname | Your SMTP provider's hostname |
+| `SMTP_PORT` | SMTP server port | Usually 587 or 465 |
+| `SMTP_USER` | SMTP username | Your SMTP username |
+| `SMTP_PASS` | SMTP password | Your SMTP password |
+| `SMTP_FROM` | SMTP from address | Email address for sending emails |
+| `SMTP_SECURE` | SMTP secure setting | `true` or `false` |
+| `JWT_SECRET` | JWT secret for authentication | Generate a strong secret |
+| `APP_BASE_URL` | Application base URL | Your frontend URL |
 
 ## Setting Up Secrets
 
@@ -92,6 +108,36 @@ ssh-keygen -t rsa -b 4096 -f ~/.ssh/quokkaq-deploy
 
 2. Store the key content as the `YC_SERVICE_ACCOUNT_KEY` secret
 
+### 6. Production Environment Variables
+
+Set up the following production environment variables as secrets:
+
+#### Database Configuration
+- `POSTGRES_USER`: Choose a secure username (e.g., `quokkaq_user`)
+- `POSTGRES_PASSWORD`: Generate a strong password
+- `POSTGRES_DB`: Usually `quokkaq`
+
+#### Redis Configuration
+- `REDIS_PASSWORD`: Generate a strong password
+
+#### MinIO Configuration
+- `MINIO_ROOT_USER`: Choose a secure username (e.g., `quokkaq_minio`)
+- `MINIO_ROOT_PASSWORD`: Generate a strong password
+- `AWS_S3_BUCKET`: Usually `quokkaq-materials`
+
+#### SMTP Configuration
+- `SMTP_HOST`: Your SMTP provider's hostname (e.g., `smtp.yandex.ru`)
+- `SMTP_PORT`: Usually 587 or 465
+- `SMTP_USER`: Your SMTP username
+- `SMTP_PASS`: Your SMTP password
+- `SMTP_FROM`: Email address for sending emails (e.g., `noreply@quokkaq.v-b.tech`)
+- `SMTP_SECURE`: `true` or `false`
+
+#### Application Configuration
+- `ACME_EMAIL`: Your email address for Let's Encrypt notifications
+- `JWT_SECRET`: Generate a strong secret (at least 32 characters)
+- `APP_BASE_URL`: Your frontend URL (e.g., `https://quokkaq.v-b.tech`)
+
 ## Secret Values Format
 
 ### YC_REGISTRY_PASSWORD
@@ -143,6 +189,10 @@ ssh-keygen -t rsa -b 4096 -f ~/.ssh/quokkaq-deploy
 -----END OPENSSH PRIVATE KEY-----
 ```
 
+### Other Secrets
+
+All other secrets should contain plain text values as appropriate for their use case.
+
 ## Testing Secret Configuration
 
 After configuring all secrets, you can test the configuration by triggering the CI/CD pipeline:
@@ -179,6 +229,7 @@ After configuring all secrets, you can test the configuration by triggering the 
 1. **Authentication failures**: Check that all secrets are correctly configured and not expired
 2. **Permission denied**: Verify that service accounts have the required roles
 3. **Connection failures**: Check network access and firewall rules
+4. **Missing environment variables**: Ensure all required secrets are configured
 
 ### Debugging Steps
 

@@ -27,7 +27,7 @@ The pipeline can be triggered by:
 5. **Docker Build**: The pipeline builds a Docker image using the multi-stage Dockerfile
 6. **Docker Push**: The pipeline pushes the Docker image to Yandex Cloud Container Registry
 7. **Git Tag**: The pipeline creates a Git tag for the release
-8. **Yandex Cloud Deploy**: The pipeline deploys the new version to the Yandex Cloud VM
+8. **Yandex Cloud Deploy**: The pipeline deploys the new version to the Yandex Cloud VM using docker-compose.prod.yml
 9. **GitHub Release**: The pipeline creates a GitHub release with release notes
 
 ## Version Management
@@ -75,6 +75,22 @@ The pipeline requires the following environment variables to be configured as se
 | `YC_REGISTRY_ID` | Yandex Cloud Container Registry ID | Yes |
 | `YC_SERVICE_ACCOUNT_KEY` | Yandex Cloud service account key | Yes |
 | `VM_SSH_KEY` | SSH private key for accessing the Yandex Cloud VM | Yes |
+| `ACME_EMAIL` | Email for Let's Encrypt SSL certificates | Yes |
+| `POSTGRES_USER` | PostgreSQL username | Yes |
+| `POSTGRES_PASSWORD` | PostgreSQL password | Yes |
+| `POSTGRES_DB` | PostgreSQL database name | Yes |
+| `REDIS_PASSWORD` | Redis password | Yes |
+| `MINIO_ROOT_USER` | MinIO root username | Yes |
+| `MINIO_ROOT_PASSWORD` | MinIO root password | Yes |
+| `AWS_S3_BUCKET` | S3 bucket name | Yes |
+| `SMTP_HOST` | SMTP server hostname | Yes |
+| `SMTP_PORT` | SMTP server port | Yes |
+| `SMTP_USER` | SMTP username | Yes |
+| `SMTP_PASS` | SMTP password | Yes |
+| `SMTP_FROM` | SMTP from address | Yes |
+| `SMTP_SECURE` | SMTP secure setting | Yes |
+| `JWT_SECRET` | JWT secret for authentication | Yes |
+| `APP_BASE_URL` | Application base URL | Yes |
 
 ### Secrets Management
 
@@ -83,6 +99,7 @@ All sensitive information should be stored as encrypted secrets in the CI/CD pla
 1. Yandex Cloud Container Registry credentials
 2. Yandex Cloud service account key
 3. SSH private key for VM access
+4. All production environment variables
 
 ## Deployment Process
 
@@ -94,14 +111,16 @@ The deployment targets a specific VM with ID: `fhmf3i36jq46rgl67sme`. This VM mu
 2. Access to Yandex Cloud Container Registry
 3. Required environment variables set
 4. Network access to required services
+5. Traefik network created (`traefik-public`)
 
 ### Deployment Steps
 
 1. Connect to the Yandex Cloud VM using SSH
 2. Pull the new Docker image from Yandex Cloud Container Registry
-3. Stop the current containers
-4. Start new containers with the updated image
-5. Run database migrations if needed
+3. Stop current services using docker-compose.prod.yml
+4. Start new services with the updated image using docker-compose.prod.yml
+5. Run database migrations
+6. Check service health
 
 ### Rollback Process
 
@@ -175,12 +194,16 @@ The pipeline sends notifications on:
 3. **Yandex Cloud deployment failures**: If the VM is not accessible or the credentials are incorrect, deployment will fail.
    - Solution: Verify the YC_SERVICE_ACCOUNT_KEY and VM_SSH_KEY secrets.
 
+4. **Environment variables missing**: If required environment variables are not set, deployment will fail.
+   - Solution: Ensure all required secrets are configured in the CI/CD environment.
+
 ### Debugging
 
 1. Check pipeline logs for detailed error messages
 2. Verify secrets are correctly set
 3. Ensure the Yandex Cloud VM is accessible
 4. Check Docker image availability in the registry
+5. Verify all required environment variables are set
 
 ## Customization
 

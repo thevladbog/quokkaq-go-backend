@@ -4,7 +4,7 @@ This document provides instructions for setting up Yandex Cloud infrastructure t
 
 ## Overview
 
-The deployment pipeline targets a specific Virtual Machine (VM) in Yandex Cloud with ID: `fhmf3i36jq46rgl67sme`. This document describes the required setup for this VM to support automated deployments.
+The deployment pipeline targets a specific Virtual Machine (VM) in Yandex Cloud with ID: `fhmf3i36jq46rgl67sme`. This document describes the required setup for this VM to support automated deployments using the production Docker Compose configuration.
 
 ## Prerequisites
 
@@ -15,6 +15,7 @@ Before setting up the deployment infrastructure, ensure you have:
 3. Network access to the VM
 4. A service account with necessary permissions
 5. A Container Registry set up in Yandex Cloud
+6. A `traefik-public` Docker network created
 
 ## Container Registry Setup
 
@@ -108,6 +109,15 @@ sudo chmod 700 /home/deploy/.ssh
 sudo chmod 600 /home/deploy/.ssh/authorized_keys
 ```
 
+## Traefik Network Setup
+
+Create the required Docker network for Traefik:
+
+```bash
+# Create traefik-public network
+docker network create traefik-public
+```
+
 ## Service Account Setup
 
 ### Create Service Account
@@ -132,44 +142,17 @@ sudo chmod 600 /home/deploy/.ssh/authorized_keys
 
 ### Environment Variables
 
-Set up the following environment variables on the VM:
+The deployment process will automatically create the required environment variables on the VM. These include:
 
-```bash
-# Database Configuration
-export DATABASE_URL=postgresql://postgres:password@localhost:5432/quokkaq
-
-# Server Configuration
-export PORT=3001
-export APP_BASE_URL=https://your-domain.com
-
-# MinIO / AWS S3 Configuration
-export AWS_ACCESS_KEY_ID=minioadmin
-export AWS_SECRET_ACCESS_KEY=minioadmin
-export AWS_REGION=us-east-1
-export AWS_S3_BUCKET=quokkaq-materials
-export AWS_ENDPOINT=http://localhost:9000
-
-# SMTP Configuration
-export SMTP_HOST=smtp.yandex.ru
-export SMTP_PORT=587
-export SMTP_USER=your-email@yandex.ru
-export SMTP_PASS=your-password
-export SMTP_FROM=noreply@your-domain.com
-export SMTP_SECURE=true
-```
-
-These variables can be stored in a `.env` file in the deployment directory.
+- Database configuration (POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB)
+- Redis configuration (REDIS_PASSWORD)
+- MinIO configuration (MINIO_ROOT_USER, MINIO_ROOT_PASSWORD, AWS_S3_BUCKET)
+- SMTP configuration (SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM, SMTP_SECURE)
+- Application configuration (ACME_EMAIL, JWT_SECRET, APP_BASE_URL)
 
 ### Docker Registry Authentication
 
-Configure Docker to authenticate with Yandex Cloud Container Registry:
-
-```bash
-# Login to Yandex Cloud Container Registry
-echo $YC_REGISTRY_PASSWORD | docker login --username $YC_REGISTRY_USERNAME --password-stdin cr.yandex
-```
-
-This should be done as the deploy user.
+The deployment process will automatically authenticate with Yandex Cloud Container Registry using the provided credentials.
 
 ## Deployment Directory Structure
 
@@ -178,193 +161,43 @@ Set up the following directory structure on the VM:
 ```
 /home/deploy/
 ├── quokkaq/
-│   ├── .env              # Environment variables
-│   ├── docker-compose.yml # Production Docker Compose configuration
-│   └── logs/              # Application logs
+│   ├── .env.prod           # Production environment variables (created by deployment process)
+│   ├── docker-compose.prod.yml # Production Docker Compose configuration (copied during deployment)
+│   └── logs/                # Application logs
 └── scripts/
-    ├── deploy.sh         # Deployment script
-    └── health-check.sh   # Health check script
+    ├── deploy.sh            # Deployment script
+    └── health-check.sh     # Health check script
 ```
 
 ### Deployment Script
 
-Create a deployment script at `/home/deploy/scripts/deploy.sh`:
+The CI/CD pipeline automatically handles the deployment process, including:
 
-```bash
-#!/bin/bash
-
-# Load environment variables
-source /home/deploy/quokkaq/.env
-
-# Authenticate with Yandex Cloud Container Registry
-echo $YC_REGISTRY_PASSWORD | docker login --username $YC_REGISTRY_USERNAME --password-stdin cr.yandex
-
-# Pull the latest Docker image
-docker pull cr.yandex/$YC_REGISTRY_ID/quokkaq-backend:$1
-
-# Stop current services
-docker compose -f /home/deploy/quokkaq/docker-compose.yml down
-
-# Start new services
-TAG=$1 docker compose -f /home/deploy/quokkaq/docker-compose.yml up -d
-
-# Run database migrations
-docker compose -f /home/deploy/quokkaq/docker-compose.yml exec backend ./migrate
-
-# Check service health
-sleep 30
-curl -f http://localhost:3001/health || exit 1
-
-echo "Deployment completed successfully"
-```
-
-### Health Check Script
-
-Create a health check script at `/home/deploy/scripts/health-check.sh`:
-
-```bash
-#!/bin/bash
-
-# Check if required services are running
-if ! docker compose -f /home/deploy/quokkaq/docker-compose.yml ps | grep -q "running"; then
-  echo "Services are not running"
-  exit 1
-fi
-
-# Check application health endpoint
-if ! curl -f http://localhost:3001/health; then
-  echo "Application health check failed"
-  exit 1
-fi
-
-echo "All services are healthy"
-```
+1. Creating the .env.prod file with production variables
+2. Pulling the new Docker image from Yandex Cloud Container Registry
+3. Stopping current services using docker-compose.prod.yml
+4. Starting new services with the updated image using docker-compose.prod.yml
+5. Running database migrations
+6. Checking service health
 
 ## Docker Compose Configuration
 
-Create a production Docker Compose configuration at `/home/deploy/quokkaq/docker-compose.yml`:
+The production deployment uses `docker-compose.prod.yml`, which includes:
 
-```yaml
-version: '3.8'
+1. **Traefik Reverse Proxy** with automatic SSL certificates via Let's Encrypt
+2. **PostgreSQL Database** with secure password authentication
+3. **Redis** with password authentication
+4. **MinIO** with Traefik integration for S3 API and Console access
+5. **QuokkaQ Backend API** with Traefik integration and security headers
 
-services:
-  # PostgreSQL Database
-  postgres:
-    image: postgres:16-alpine
-    container_name: quokkaq-postgres
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      POSTGRES_DB: quokkaq
-    ports:
-      - "127.0.0.1:5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    networks:
-      - quokkaq-network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+### Key Features
 
-  # Redis for background jobs
-  redis:
-    image: redis:7-alpine
-    container_name: quokkaq-redis
-    restart: unless-stopped
-    ports:
-      - "127.0.0.1:6379:6379"
-    volumes:
-      - redis_data:/data
-    networks:
-      - quokkaq-network
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  # MinIO for file storage
-  minio:
-    image: minio/minio:latest
-    container_name: quokkaq-minio
-    restart: unless-stopped
-    command: server /data --console-address ":9001"
-    environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
-    ports:
-      - "127.0.0.1:9000:9000"
-      - "127.0.0.1:9001:9001"
-    volumes:
-      - minio_data:/data
-    networks:
-      - quokkaq-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
-      interval: 30s
-      timeout: 20s
-      retries: 3
-
-  # QuokkaQ Backend API
-  backend:
-    image: cr.yandex/${YC_REGISTRY_ID}/quokkaq-backend:${TAG:-latest}
-    container_name: quokkaq-backend
-    restart: unless-stopped
-    ports:
-      - "3001:3001"
-    environment:
-      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/quokkaq
-      PORT: 3001
-      APP_BASE_URL: ${APP_BASE_URL:-http://localhost:3000}
-      
-      # MinIO Configuration
-      AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-minioadmin}
-      AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
-      AWS_REGION: us-east-1
-      AWS_S3_BUCKET: quokkaq-materials
-      AWS_ENDPOINT: http://minio:9000
-      
-      # SMTP Configuration
-      SMTP_HOST: ${SMTP_HOST}
-      SMTP_PORT: ${SMTP_PORT}
-      SMTP_USER: ${SMTP_USER}
-      SMTP_PASS: ${SMTP_PASS}
-      SMTP_FROM: ${SMTP_FROM}
-      SMTP_SECURE: ${SMTP_SECURE:-false}
-      
-      # Redis Configuration
-      REDIS_URL: redis://redis:6379/0
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      minio:
-        condition: service_healthy
-    networks:
-      - quokkaq-network
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-
-networks:
-  quokkaq-network:
-    driver: bridge
-
-volumes:
-  postgres_data:
-    driver: local
-  redis_data:
-    driver: local
-  minio_data:
-    driver: local
-```
+- ✅ Automatic SSL certificates via Let's Encrypt
+- ✅ HTTP to HTTPS redirection
+- ✅ CORS middleware for frontend integration
+- ✅ Security headers (HSTS, etc.)
+- ✅ Proper service isolation with Docker networks
+- ✅ Health checks for all services
 
 ## Security Considerations
 
@@ -466,28 +299,21 @@ echo "0 3 * * * /home/deploy/scripts/backup-minio.sh" | crontab -
 
 ### Initial Deployment Test
 
-1. Manually run the deployment script with a test version:
+1. Trigger the CI/CD pipeline by merging a PR to the `prod-release` branch
+2. Monitor the deployment process in the Actions tab
+3. Verify all services are running:
    ```bash
-   /home/deploy/scripts/deploy.sh 1.0.0
+   docker compose -f docker-compose.prod.yml --env-file .env.prod ps
    ```
 
-2. Verify all services are running:
-   ```bash
-   docker compose -f /home/deploy/quokkaq/docker-compose.yml ps
-   ```
-
-3. Check application health:
+4. Check application health:
    ```bash
    curl -f http://localhost:3001/health
    ```
 
 ### Rollback Test
 
-1. Deploy a known good version:
-   ```bash
-   /home/deploy/scripts/deploy.sh 0.9.9
-   ```
-
+1. Deploy a known good version by reverting the `prod-release` branch
 2. Verify the application is working correctly
 
 ## Maintenance
@@ -535,11 +361,16 @@ echo "0 3 * * * /home/deploy/scripts/backup-minio.sh" | crontab -
    - Verify security group settings
    - Test connectivity to required services
 
+4. **Traefik SSL certificate issues**:
+   - Check Traefik logs: `docker compose -f docker-compose.prod.yml logs traefik`
+   - Verify DNS configuration
+   - Check Let's Encrypt rate limits
+
 ### Logs and Diagnostics
 
 1. Check Docker logs:
    ```bash
-   docker logs quokkaq-backend
+   docker compose -f docker-compose.prod.yml logs
    ```
 
 2. Check system logs:
@@ -554,4 +385,4 @@ echo "0 3 * * * /home/deploy/scripts/backup-minio.sh" | crontab -
 
 ## Conclusion
 
-This setup provides a robust foundation for deploying the QuokkaQ Backend application to Yandex Cloud. The configuration supports automated deployments, monitoring, and maintenance operations. Regular review and updates to this setup will ensure continued reliability and security of the deployed application.
+This setup provides a robust foundation for deploying the QuokkaQ Backend application to Yandex Cloud using the production Docker Compose configuration. The configuration supports automated deployments, monitoring, and maintenance operations. Regular review and updates to this setup will ensure continued reliability and security of the deployed application.
