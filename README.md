@@ -299,9 +299,9 @@ quokkaq-go-backend/
 ├── internal/
 │   ├── config/           # Configuration loading
 │   ├── handlers/         # HTTP request handlers
-│   ├── middleware/       # HTTP middleware (auth, logging)
+│   ├── middleware/        # HTTP middleware (auth, logging)
 │   ├── models/           # Database models (GORM)
-│   ├── repository/       # Data access layer
+│   ├── repository/        # Data access layer
 │   ├── services/         # Business logic layer
 │   ├── jobs/             # Background job definitions
 │   └── ws/               # WebSocket hub and client
@@ -371,6 +371,19 @@ go run cmd/test_email/main.go
 ---
 
 ## 🚢 Deployment
+
+### Automated Deployment
+
+This project includes an automated deployment pipeline that is triggered when changes are pushed to the `prod-release` branch. The pipeline performs the following actions:
+
+1. Automatically calculates the next semantic version
+2. Updates the CHANGELOG.md with release information
+3. Builds and pushes a Docker image to the registry
+4. Creates a Git tag for the release
+5. Deploys the new version to a Yandex Cloud VM
+6. Creates a GitHub release
+
+For detailed information about the deployment process, see [DEPLOYMENT.md](DEPLOYMENT.md).
 
 ### Docker Deployment
 
@@ -469,8 +482,6 @@ Contributions are welcome! Please follow these guidelines:
 This project is proprietary software. **All rights reserved.**
 
 The source code is made available for viewing and evaluation purposes only. Any use, modification, or distribution requires explicit written permission from the copyright holder. See the [LICENSE](LICENSE) file for complete terms.
-
-For licensing inquiries, please contact the project maintainers.
 
 ---
 
