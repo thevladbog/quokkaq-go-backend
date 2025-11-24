@@ -2,8 +2,11 @@ package services
 
 import (
 	"encoding/json"
+	"errors"
 	"quokkaq-go-backend/internal/models"
 	"quokkaq-go-backend/internal/repository"
+
+	"github.com/google/uuid"
 )
 
 type UnitService interface {
@@ -27,6 +30,27 @@ func NewUnitService(repo repository.UnitRepository) UnitService {
 }
 
 func (s *unitService) CreateUnit(unit *models.Unit) error {
+	if unit.CompanyID == "" {
+		// Check if this is the first unit
+		count, err := s.repo.Count()
+		if err != nil {
+			return err
+		}
+
+		if count == 0 {
+			// Auto-create company
+			company := &models.Company{
+				ID:   uuid.New().String(),
+				Name: "Default Company",
+			}
+			if err := s.repo.CreateCompany(company); err != nil {
+				return err
+			}
+			unit.CompanyID = company.ID
+		} else {
+			return errors.New("companyId is required")
+		}
+	}
 	return s.repo.Create(unit)
 }
 
