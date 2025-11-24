@@ -140,8 +140,12 @@ services:
       - "traefik.http.middlewares.quokkaq-security.headers.stsPreload=true"
       - "traefik.http.middlewares.quokkaq-security.headers.forceSTSHeader=true"
       
+      # WebSocket support - required for real-time updates
+      - "traefik.http.middlewares.websocket-headers.headers.customrequestheaders.Connection=Upgrade"
+      - "traefik.http.middlewares.websocket-headers.headers.customrequestheaders.Upgrade=websocket"
+      
       # Apply middlewares
-      - "traefik.http.routers.quokkaq-api.middlewares=quokkaq-cors,quokkaq-security"
+      - "traefik.http.routers.quokkaq-api.middlewares=quokkaq-cors,quokkaq-security,websocket-headers"
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/"]
       interval: 30s
