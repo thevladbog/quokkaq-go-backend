@@ -20,6 +20,7 @@ type UserService interface {
 	AssignRole(userID, roleID string) error
 	IsSystemInitialized() (bool, error)
 	CreateFirstAdmin(user *models.User) error
+	EnsureRoleExists(name string) (*models.Role, error)
 }
 
 type userService struct {
@@ -110,17 +111,29 @@ func (s *userService) CreateFirstAdmin(user *models.User) error {
 		return errors.New("system is already initialized")
 	}
 
-	// 2. Find Admin Role
-	adminRole, err := s.repo.FindRoleByName("Admin")
+	// 2. Ensure roles exist
+	roles := []string{"admin", "supervisor", "operator"}
+	for _, roleName := range roles {
+		if _, err := s.EnsureRoleExists(roleName); err != nil {
+			return err
+		}
+	}
+
+	// 3. Find Admin Role
+	adminRole, err := s.repo.FindRoleByName("admin")
 	if err != nil {
 		return errors.New("admin role not found")
 	}
 
-	// 3. Create User
+	// 4. Create User
 	if err := s.CreateUser(user); err != nil {
 		return err
 	}
 
-	// 4. Assign Admin Role
+	// 5. Assign Admin Role
 	return s.AssignRole(user.ID, adminRole.ID)
+}
+
+func (s *userService) EnsureRoleExists(name string) (*models.Role, error) {
+	return s.repo.EnsureRoleExists(name)
 }

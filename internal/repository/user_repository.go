@@ -22,6 +22,7 @@ type UserRepository interface {
 	FindPasswordResetToken(token string) (*models.PasswordResetToken, error)
 	DeletePasswordResetToken(id string) error
 	Count() (int64, error)
+	EnsureRoleExists(name string) (*models.Role, error)
 }
 
 type userRepository struct {
@@ -126,4 +127,13 @@ func (r *userRepository) Count() (int64, error) {
 	var count int64
 	err := r.db.Model(&models.User{}).Count(&count).Error
 	return count, err
+}
+
+func (r *userRepository) EnsureRoleExists(name string) (*models.Role, error) {
+	var role models.Role
+	err := r.db.FirstOrCreate(&role, models.Role{Name: name}).Error
+	if err != nil {
+		return nil, err
+	}
+	return &role, nil
 }
