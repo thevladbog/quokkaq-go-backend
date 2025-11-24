@@ -101,7 +101,7 @@ func main() {
 	bookingService := services.NewBookingService(bookingRepo)
 	shiftService := services.NewShiftService(ticketRepo, counterRepo, hub)
 	templateService := services.NewTemplateService(templateRepo)
-	invitationService := services.NewInvitationService(invitationRepo, mailService, userRepo)
+	invitationService := services.NewInvitationService(invitationRepo, mailService, userRepo, templateService)
 
 	// Handlers
 	userHandler := handlers.NewUserHandler(userService)
@@ -261,6 +261,7 @@ func main() {
 		r.Get("/", templateHandler.GetAllTemplates)
 		r.Get("/{id}", templateHandler.GetTemplateByID)
 		r.Put("/{id}", templateHandler.UpdateTemplate)
+		r.Patch("/{id}", templateHandler.UpdateTemplate)
 		r.Delete("/{id}", templateHandler.DeleteTemplate)
 	})
 

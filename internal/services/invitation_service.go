@@ -7,6 +7,7 @@ import (
 	"os"
 	"quokkaq-go-backend/internal/models"
 	"quokkaq-go-backend/internal/repository"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -14,7 +15,7 @@ import (
 )
 
 type InvitationService interface {
-	CreateInvitation(email string, targetUnits []byte, targetRoles []byte) (*models.Invitation, error)
+	CreateInvitation(email string, targetUnits []byte, targetRoles []byte, templateID string) (*models.Invitation, error)
 	GetAllInvitations() ([]models.Invitation, error)
 	GetInvitationByID(id string) (*models.Invitation, error)
 	AcceptInvitation(token string, userID string) error
@@ -25,20 +26,22 @@ type InvitationService interface {
 }
 
 type invitationService struct {
-	repo        repository.InvitationRepository
-	mailService MailService
-	userRepo    repository.UserRepository
+	repo            repository.InvitationRepository
+	mailService     MailService
+	userRepo        repository.UserRepository
+	templateService TemplateService
 }
 
-func NewInvitationService(repo repository.InvitationRepository, mailService MailService, userRepo repository.UserRepository) InvitationService {
+func NewInvitationService(repo repository.InvitationRepository, mailService MailService, userRepo repository.UserRepository, templateService TemplateService) InvitationService {
 	return &invitationService{
-		repo:        repo,
-		mailService: mailService,
-		userRepo:    userRepo,
+		repo:            repo,
+		mailService:     mailService,
+		userRepo:        userRepo,
+		templateService: templateService,
 	}
 }
 
-func (s *invitationService) CreateInvitation(email string, targetUnits []byte, targetRoles []byte) (*models.Invitation, error) {
+func (s *invitationService) CreateInvitation(email string, targetUnits []byte, targetRoles []byte, templateID string) (*models.Invitation, error) {
 	// Check if user already exists
 	_, err := s.userRepo.FindByEmail(email)
 	if err == nil {
@@ -71,10 +74,29 @@ func (s *invitationService) CreateInvitation(email string, targetUnits []byte, t
 		baseURL = "http://localhost:3000"
 	}
 	inviteLink := fmt.Sprintf("%s/register/%s", baseURL, token)
-	emailBody := fmt.Sprintf("You have been invited to join QuokkaQ. Click here to register: <a href=\"%s\">%s</a>", inviteLink, inviteLink)
+
+	var subject, emailBody string
+
+	if templateID != "" {
+		template, err := s.templateService.GetTemplateByID(templateID)
+		if err != nil {
+			// If template ID is provided but not found, we should probably return an error
+			// to let the user know something went wrong.
+			return nil, fmt.Errorf("template not found: %w", err)
+		}
+		subject = template.Subject
+		// Simple replacement for now. In a real app, use a template engine.
+		emailBody = template.Content
+		// Replace placeholders
+		emailBody = strings.ReplaceAll(emailBody, "{{link}}", inviteLink)
+		emailBody = strings.ReplaceAll(emailBody, "{{email}}", email)
+	} else {
+		subject = "Invitation to QuokkaQ"
+		emailBody = fmt.Sprintf("You have been invited to join QuokkaQ. Click here to register: <a href=\"%s\">%s</a>", inviteLink, inviteLink)
+	}
 
 	// We ignore email error for now to not block the flow, or we could log it
-	_ = s.mailService.SendMail(email, "Invitation to QuokkaQ", emailBody)
+	_ = s.mailService.SendMail(email, subject, emailBody)
 
 	return invitation, nil
 }
