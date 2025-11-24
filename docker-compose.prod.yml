@@ -93,6 +93,7 @@ services:
       AWS_REGION: us-east-1
       AWS_S3_BUCKET: ${AWS_S3_BUCKET:-quokkaq-materials}
       AWS_ENDPOINT: http://minio:9000
+      AWS_PUBLIC_ENDPOINT: ${AWS_PUBLIC_ENDPOINT:-https://s3.quokkaq.v-b.tech}
       
       # SMTP Configuration
       SMTP_HOST: ${SMTP_HOST}

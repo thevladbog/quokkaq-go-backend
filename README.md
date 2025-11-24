@@ -199,31 +199,6 @@ AWS_ENDPOINT=http://localhost:9000
 SMTP_HOST=smtp.example.com
 SMTP_PORT=587
 SMTP_USER=your-email@example.com
-SMTP_PASS=your-password
-SMTP_FROM=noreply@example.com
-SMTP_SECURE=false
-```
-
-### Configuration Variables
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `DATABASE_URL` | PostgreSQL connection string | - |
-| `PORT` | HTTP server port | `3001` |
-| `APP_BASE_URL` | Frontend URL for email links | `http://localhost:3000` |
-| `AWS_ACCESS_KEY_ID` | MinIO/S3 access key | - |
-| `AWS_SECRET_ACCESS_KEY` | MinIO/S3 secret key | - |
-| `AWS_S3_BUCKET` | Storage bucket name | `quokkaq-materials` |
-| `AWS_ENDPOINT` | MinIO endpoint (omit for AWS) | `http://localhost:9000` |
-| `SMTP_HOST` | SMTP server hostname | - |
-| `SMTP_PORT` | SMTP server port | `587` |
-| `SMTP_USER` | SMTP username | - |
-| `SMTP_PASS` | SMTP password | - |
-| `SMTP_FROM` | Email sender address | - |
-
----
-
-## 🏃 Running the Application
 
 ### Development Mode
 

@@ -98,11 +98,20 @@ func (s *storageService) UploadFile(fileBytes []byte, fileName string, folder st
 		return "", "", err
 	}
 
+	// Construct URL for frontend consumption
+	// Priority: AWS_PUBLIC_ENDPOINT > AWS_ENDPOINT > AWS S3 default
 	url := ""
+	publicEndpoint := os.Getenv("AWS_PUBLIC_ENDPOINT")
 	endpoint := os.Getenv("AWS_ENDPOINT")
-	if endpoint != "" {
+
+	if publicEndpoint != "" {
+		// Use public-facing domain (e.g., https://s3.quokkaq.v-b.tech)
+		url = fmt.Sprintf("%s/%s/%s", publicEndpoint, s.bucketName, key)
+	} else if endpoint != "" {
+		// Fallback to internal endpoint for backward compatibility
 		url = fmt.Sprintf("%s/%s/%s", endpoint, s.bucketName, key)
 	} else {
+		// Default to AWS S3 URL format
 		url = fmt.Sprintf("https://%s.s3.%s.amazonaws.com/%s", s.bucketName, os.Getenv("AWS_REGION"), key)
 	}
 
