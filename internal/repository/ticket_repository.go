@@ -26,6 +26,7 @@ type TicketRepository interface {
 	GetWaitingTickets(unitID string) ([]models.Ticket, error)
 	UpdateStatusByUnit(unitID string, oldStatuses []string, newStatus string) (int64, error)
 	GetActiveTicketByCounter(counterID string) (*models.Ticket, error)
+	MarkAsEOD(unitID string) (int64, error)
 }
 
 type ticketRepository struct {
@@ -58,14 +59,14 @@ func (r *ticketRepository) FindByID(id string) (*models.Ticket, error) {
 func (r *ticketRepository) FindByUnitID(unitID string) ([]models.Ticket, error) {
 	var tickets []models.Ticket
 	err := r.db.Preload("Unit").Preload("Service").Preload("Counter").
-		Where("unit_id = ?", unitID).
+		Where("unit_id = ? AND is_eod = ?", unitID, false).
 		Order("created_at asc").
 		Find(&tickets).Error
 	return tickets, err
 }
 
 func (r *ticketRepository) FindWaiting(unitID string, serviceID *string) (*models.Ticket, error) {
-	query := r.db.Where("unit_id = ? AND status = ?", unitID, "waiting")
+	query := r.db.Where("unit_id = ? AND status = ? AND is_eod = ?", unitID, "waiting", false)
 	if serviceID != nil {
 		query = query.Where("service_id = ?", *serviceID)
 	}
@@ -134,7 +135,7 @@ func (r *ticketRepository) ResetSequences(unitID, date string) error {
 func (r *ticketRepository) CountWaiting(unitID string) (int64, error) {
 	var count int64
 	err := r.db.Model(&models.Ticket{}).
-		Where("unit_id = ? AND status = ?", unitID, "waiting").
+		Where("unit_id = ? AND status = ? AND is_eod = ?", unitID, "waiting", false).
 		Count(&count).Error
 	return count, err
 }
@@ -142,7 +143,7 @@ func (r *ticketRepository) CountWaiting(unitID string) (int64, error) {
 func (r *ticketRepository) GetWaitingTickets(unitID string) ([]models.Ticket, error) {
 	var tickets []models.Ticket
 	err := r.db.Preload("Service").
-		Where("unit_id = ? AND status = ?", unitID, "waiting").
+		Where("unit_id = ? AND status = ? AND is_eod = ?", unitID, "waiting", false).
 		Order("priority desc, created_at asc").
 		Find(&tickets).Error
 	return tickets, err
@@ -157,7 +158,7 @@ func (r *ticketRepository) UpdateStatusByUnit(unitID string, oldStatuses []strin
 
 func (r *ticketRepository) GetActiveTicketByCounter(counterID string) (*models.Ticket, error) {
 	var ticket models.Ticket
-	err := r.db.Where("counter_id = ? AND status IN ?", counterID, []string{"called", "in_service"}).
+	err := r.db.Where("counter_id = ? AND status IN ? AND is_eod = ?", counterID, []string{"called", "in_service"}, false).
 		First(&ticket).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -166,4 +167,11 @@ func (r *ticketRepository) GetActiveTicketByCounter(counterID string) (*models.T
 		return nil, err
 	}
 	return &ticket, nil
+}
+
+func (r *ticketRepository) MarkAsEOD(unitID string) (int64, error) {
+	result := r.db.Model(&models.Ticket{}).
+		Where("unit_id = ? AND is_eod = ?", unitID, false).
+		Update("is_eod", true)
+	return result.RowsAffected, result.Error
 }

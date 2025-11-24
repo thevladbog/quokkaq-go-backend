@@ -4,6 +4,7 @@ import (
 	"math"
 	"quokkaq-go-backend/internal/models"
 	"quokkaq-go-backend/internal/repository"
+	"quokkaq-go-backend/internal/ws"
 	"time"
 )
 
@@ -23,12 +24,14 @@ type ShiftCounterDTO struct {
 type shiftService struct {
 	ticketRepo  repository.TicketRepository
 	counterRepo repository.CounterRepository
+	hub         *ws.Hub
 }
 
-func NewShiftService(ticketRepo repository.TicketRepository, counterRepo repository.CounterRepository) ShiftService {
+func NewShiftService(ticketRepo repository.TicketRepository, counterRepo repository.CounterRepository, hub *ws.Hub) ShiftService {
 	return &shiftService{
 		ticketRepo:  ticketRepo,
 		counterRepo: counterRepo,
+		hub:         hub,
 	}
 }
 
@@ -97,25 +100,19 @@ func (s *shiftService) GetShiftCounters(unitID string) ([]ShiftCounterDTO, error
 }
 
 func (s *shiftService) ExecuteEndOfDay(unitID string, userID *string) (map[string]interface{}, error) {
-	// 1. Mark all active tickets (called, in_service) as served
-	activeTicketsClosed, err := s.ticketRepo.UpdateStatusByUnit(unitID, []string{"called", "in_service"}, "served")
+	// 1. Mark all tickets as EOD (preserving their actual status for statistics)
+	ticketsMarked, err := s.ticketRepo.MarkAsEOD(unitID)
 	if err != nil {
 		return nil, err
 	}
 
-	// 2. Mark all waiting tickets as no_show
-	waitingTicketsNoShow, err := s.ticketRepo.UpdateStatusByUnit(unitID, []string{"waiting"}, "no_show")
-	if err != nil {
-		return nil, err
-	}
-
-	// 3. Release all counters
+	// 2. Release all counters
 	countersReleased, err := s.counterRepo.ReleaseAll(unitID)
 	if err != nil {
 		return nil, err
 	}
 
-	// 4. Reset ticket number sequences
+	// 3. Reset ticket number sequences
 	today := time.Now().Format("2006-01-02")
 	err = s.ticketRepo.ResetSequences(unitID, today)
 	if err != nil {
@@ -124,10 +121,14 @@ func (s *shiftService) ExecuteEndOfDay(unitID string, userID *string) (map[strin
 
 	// TODO: Create audit log (skipping for now as AuditLogRepo is not fully set up)
 
-	return map[string]interface{}{
-		"success":              true,
-		"activeTicketsClosed":  activeTicketsClosed,
-		"waitingTicketsNoShow": waitingTicketsNoShow,
-		"countersReleased":     countersReleased,
-	}, nil
+	result := map[string]interface{}{
+		"success":          true,
+		"ticketsMarked":    ticketsMarked,
+		"countersReleased": countersReleased,
+	}
+
+	// Broadcast EOD event to all connected clients in this unit's room
+	s.hub.BroadcastEvent("unit.eod", result, unitID)
+
+	return result, nil
 }
