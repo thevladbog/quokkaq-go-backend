@@ -18,6 +18,7 @@ func NewInvitationHandler(service services.InvitationService) *InvitationHandler
 
 type CreateInvitationRequest struct {
 	Email       string          `json:"email"`
+	TemplateID  string          `json:"templateId"`
 	TargetUnits json.RawMessage `json:"targetUnits"`
 	TargetRoles json.RawMessage `json:"targetRoles"`
 }
@@ -45,7 +46,7 @@ func (h *InvitationHandler) CreateInvitation(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	invitation, err := h.service.CreateInvitation(req.Email, req.TargetUnits, req.TargetRoles)
+	invitation, err := h.service.CreateInvitation(req.Email, req.TargetUnits, req.TargetRoles, req.TemplateID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
