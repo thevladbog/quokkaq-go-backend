@@ -13,6 +13,7 @@ type Ticket struct {
 	CounterID      *string    `json:"counterId,omitempty"`
 	Status         string     `gorm:"default:'waiting'" json:"status"`
 	Priority       int        `gorm:"default:0" json:"priority"`
+	IsEOD          bool       `gorm:"default:false" json:"isEod"`
 	CreatedAt      time.Time  `gorm:"default:now()" json:"createdAt"`
 	CalledAt       *time.Time `json:"calledAt,omitempty"`
 	ConfirmedAt    *time.Time `json:"confirmedAt,omitempty"`

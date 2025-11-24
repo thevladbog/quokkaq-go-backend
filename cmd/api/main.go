@@ -99,7 +99,7 @@ func main() {
 	serviceService := services.NewServiceService(serviceRepo)
 	counterService := services.NewCounterService(counterRepo, ticketRepo, userRepo)
 	bookingService := services.NewBookingService(bookingRepo)
-	shiftService := services.NewShiftService(ticketRepo, counterRepo)
+	shiftService := services.NewShiftService(ticketRepo, counterRepo, hub)
 	templateService := services.NewTemplateService(templateRepo)
 	invitationService := services.NewInvitationService(invitationRepo, mailService, userRepo)
 
