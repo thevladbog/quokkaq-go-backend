@@ -16,6 +16,8 @@ type UnitRepository interface {
 	AddMaterial(material *models.UnitMaterial) error
 	GetMaterials(unitID string) ([]models.UnitMaterial, error)
 	DeleteMaterial(id string) error
+	Count() (int64, error)
+	CreateCompany(company *models.Company) error
 }
 
 type unitRepository struct {
@@ -65,4 +67,14 @@ func (r *unitRepository) GetMaterials(unitID string) ([]models.UnitMaterial, err
 
 func (r *unitRepository) DeleteMaterial(id string) error {
 	return r.db.Delete(&models.UnitMaterial{}, "id = ?", id).Error
+}
+
+func (r *unitRepository) Count() (int64, error) {
+	var count int64
+	err := r.db.Model(&models.Unit{}).Count(&count).Error
+	return count, err
+}
+
+func (r *unitRepository) CreateCompany(company *models.Company) error {
+	return r.db.Create(company).Error
 }

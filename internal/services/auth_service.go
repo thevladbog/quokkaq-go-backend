@@ -93,13 +93,13 @@ func (s *authService) RequestPasswordReset(email string) error {
 		return err
 	}
 
-	frontendURL := os.Getenv("FRONTEND_URL")
-	if frontendURL == "" {
-		frontendURL = "http://localhost:3000"
+	baseURL := os.Getenv("APP_BASE_URL")
+	if baseURL == "" {
+		baseURL = "http://localhost:3000"
 	}
 
 	// Send email
-	resetLink := fmt.Sprintf("%s/reset-password?token=%s", frontendURL, token)
+	resetLink := fmt.Sprintf("%s/reset-password?token=%s", baseURL, token)
 	subject := "Сброс пароля | QuokkaQ"
 	html := strings.Replace(PasswordResetEmailTemplate, "{{reset_link}}", resetLink, -1)
 
