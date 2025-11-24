@@ -177,6 +177,10 @@ AWS_SECRET_ACCESS_KEY=minioadmin
 AWS_REGION=us-east-1
 AWS_S3_BUCKET=quokkaq-materials
 AWS_ENDPOINT=http://localhost:9000
+# AWS_PUBLIC_ENDPOINT - Публичный URL для S3 (используется в ссылках на файлы для клиентов)
+# Для продакшена с Traefik: https://s3.quokkaq.v-b.tech
+# Для локальной разработки: оставьте пустым или используйте http://localhost:9000
+# AWS_PUBLIC_ENDPOINT=https://s3.yourdomain.com
 
 # Настройка SMTP
 SMTP_HOST=smtp.yandex.ru

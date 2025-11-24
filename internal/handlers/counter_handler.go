@@ -36,6 +36,10 @@ func (h *CounterHandler) CreateCounter(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Extract unitId from URL path parameter
+	unitID := chi.URLParam(r, "unitId")
+	counter.UnitID = unitID
+
 	if err := h.service.CreateCounter(&counter); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
