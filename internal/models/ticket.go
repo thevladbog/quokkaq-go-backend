@@ -5,28 +5,30 @@ import (
 )
 
 type Ticket struct {
-	ID             string     `gorm:"primaryKey;default:gen_random_uuid()" json:"id"`
-	QueueNumber    string     `gorm:"not null" json:"queueNumber"`
-	UnitID         string     `gorm:"not null" json:"unitId"`
-	ServiceID      string     `gorm:"not null" json:"serviceId"`
-	BookingID      *string    `json:"bookingId,omitempty"`
-	CounterID      *string    `json:"counterId,omitempty"`
-	Status         string     `gorm:"default:'waiting'" json:"status"`
-	Priority       int        `gorm:"default:0" json:"priority"`
-	IsEOD          bool       `gorm:"default:false" json:"isEod"`
-	CreatedAt      time.Time  `gorm:"default:now()" json:"createdAt"`
-	CalledAt       *time.Time `json:"calledAt,omitempty"`
-	ConfirmedAt    *time.Time `json:"confirmedAt,omitempty"`
-	CompletedAt    *time.Time `json:"completedAt,omitempty"`
-	LastCalledAt   *time.Time `json:"lastCalledAt,omitempty"`
-	MaxWaitingTime *int       `json:"maxWaitingTime,omitempty"` // Snapshot from Service at creation
+	ID                string     `gorm:"primaryKey;default:gen_random_uuid()" json:"id"`
+	QueueNumber       string     `gorm:"not null" json:"queueNumber"`
+	UnitID            string     `gorm:"not null" json:"unitId"`
+	ServiceID         string     `gorm:"not null" json:"serviceId"`
+	BookingID         *string    `json:"bookingId,omitempty"`
+	CounterID         *string    `json:"counterId,omitempty"`
+	PreRegistrationID *string    `json:"preRegistrationId,omitempty"`
+	Status            string     `gorm:"default:'waiting'" json:"status"`
+	Priority          int        `gorm:"default:0" json:"priority"`
+	IsEOD             bool       `gorm:"default:false" json:"isEod"`
+	CreatedAt         time.Time  `gorm:"default:now()" json:"createdAt"`
+	CalledAt          *time.Time `json:"calledAt,omitempty"`
+	ConfirmedAt       *time.Time `json:"confirmedAt,omitempty"`
+	CompletedAt       *time.Time `json:"completedAt,omitempty"`
+	LastCalledAt      *time.Time `json:"lastCalledAt,omitempty"`
+	MaxWaitingTime    *int       `json:"maxWaitingTime,omitempty"` // Snapshot from Service at creation
 
 	// Relations
-	Unit      Unit            `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-" swaggerignore:"true"`
-	Service   Service         `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"service,omitempty"`
-	Booking   *Booking        `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;" json:"booking,omitempty"`
-	Counter   *Counter        `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;" json:"counter,omitempty"`
-	Histories []TicketHistory `gorm:"foreignKey:TicketID" json:"-"`
+	Unit            Unit             `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-" swaggerignore:"true"`
+	Service         Service          `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"service,omitempty"`
+	Booking         *Booking         `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;" json:"booking,omitempty"`
+	Counter         *Counter         `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;" json:"counter,omitempty"`
+	PreRegistration *PreRegistration `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;" json:"preRegistration,omitempty"`
+	Histories       []TicketHistory  `gorm:"foreignKey:TicketID" json:"-"`
 }
 
 type TicketHistory struct {

@@ -62,6 +62,11 @@ func main() {
 		&models.Invitation{},
 		&models.MessageTemplate{},
 		&models.PasswordResetToken{},
+		&models.PreRegistration{},
+		&models.SlotConfig{},
+		&models.WeeklySlotCapacity{},
+		&models.DaySchedule{},
+		&models.ServiceSlot{},
 	)
 
 	// WebSocket Hub
@@ -89,6 +94,8 @@ func main() {
 	bookingRepo := repository.NewBookingRepository()
 	templateRepo := repository.NewTemplateRepository()
 	invitationRepo := repository.NewInvitationRepository()
+	slotRepo := repository.NewSlotRepository()
+	preRegRepo := repository.NewPreRegistrationRepository()
 
 	// Services
 	userService := services.NewUserService(userRepo)
@@ -102,6 +109,8 @@ func main() {
 	shiftService := services.NewShiftService(ticketRepo, counterRepo, hub)
 	templateService := services.NewTemplateService(templateRepo)
 	invitationService := services.NewInvitationService(invitationRepo, mailService, userRepo, templateService)
+	slotService := services.NewSlotService(slotRepo, preRegRepo)
+	preRegService := services.NewPreRegistrationService(preRegRepo, slotRepo, ticketRepo, serviceRepo)
 
 	// Handlers
 	userHandler := handlers.NewUserHandler(userService)
@@ -114,6 +123,8 @@ func main() {
 	shiftHandler := handlers.NewShiftHandler(shiftService)
 	templateHandler := handlers.NewTemplateHandler(templateService)
 	invitationHandler := handlers.NewInvitationHandler(invitationService)
+	slotHandler := handlers.NewSlotHandler(slotService)
+	preRegHandler := handlers.NewPreRegistrationHandler(preRegService, ticketService)
 
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
@@ -223,6 +234,23 @@ func main() {
 
 		// Ad Settings
 		r.Patch("/{unitId}/ad-settings", unitHandler.UpdateAdSettings)
+
+		// Slot Configuration
+		r.Get("/{unitId}/slots/config", slotHandler.GetConfig)
+		r.Put("/{unitId}/slots/config", slotHandler.UpdateConfig)
+		r.Get("/{unitId}/slots/capacities", slotHandler.GetCapacities)
+		r.Put("/{unitId}/slots/capacities", slotHandler.UpdateCapacities)
+		r.Post("/{unitId}/slots/generate", slotHandler.Generate)
+		r.Get("/{unitId}/slots/day/{date}", slotHandler.GetDay)
+		r.Put("/{unitId}/slots/day/{date}", slotHandler.UpdateDay)
+
+		// Pre-registrations
+		r.Get("/{unitId}/pre-registrations", preRegHandler.GetByUnit)
+		r.Post("/{unitId}/pre-registrations", preRegHandler.Create)
+		r.Put("/{unitId}/pre-registrations/{id}", preRegHandler.Update)
+		r.Get("/{unitId}/pre-registrations/slots", preRegHandler.GetAvailableSlots)
+		r.Post("/{unitId}/pre-registrations/validate", preRegHandler.Validate)
+		r.Post("/{unitId}/pre-registrations/redeem", preRegHandler.Redeem)
 	})
 
 	r.Route("/services", func(r chi.Router) {

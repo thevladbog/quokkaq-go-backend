@@ -23,8 +23,10 @@ type Unit struct {
 	UpdatedAt time.Time       `gorm:"autoUpdateTime" json:"updatedAt"`
 
 	// Relations
-	Company  Company   `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;" json:"-" swaggerignore:"true"`
-	Services []Service `gorm:"foreignKey:UnitID" json:"services,omitempty"`
-	Counters []Counter `gorm:"foreignKey:UnitID" json:"counters,omitempty"`
-	Tickets  []Ticket  `gorm:"foreignKey:UnitID" json:"tickets,omitempty"`
+	Company          Company           `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;" json:"-" swaggerignore:"true"`
+	Services         []Service         `gorm:"foreignKey:UnitID" json:"services,omitempty"`
+	Counters         []Counter         `gorm:"foreignKey:UnitID" json:"counters,omitempty"`
+	Tickets          []Ticket          `gorm:"foreignKey:UnitID" json:"tickets,omitempty"`
+	PreRegistrations []PreRegistration `gorm:"foreignKey:UnitID" json:"preRegistrations,omitempty"`
+	SlotConfig       *SlotConfig       `gorm:"foreignKey:UnitID" json:"slotConfig,omitempty"`
 }
