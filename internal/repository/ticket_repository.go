@@ -43,13 +43,13 @@ func (r *ticketRepository) Create(ticket *models.Ticket) error {
 
 func (r *ticketRepository) FindAll() ([]models.Ticket, error) {
 	var tickets []models.Ticket
-	err := r.db.Preload("Unit").Preload("Service").Preload("Counter").Find(&tickets).Error
+	err := r.db.Preload("Unit").Preload("Service").Preload("Counter").Preload("PreRegistration").Find(&tickets).Error
 	return tickets, err
 }
 
 func (r *ticketRepository) FindByID(id string) (*models.Ticket, error) {
 	var ticket models.Ticket
-	err := r.db.Preload("Unit").Preload("Service").Preload("Counter").First(&ticket, "id = ?", id).Error
+	err := r.db.Preload("Unit").Preload("Service").Preload("Counter").Preload("PreRegistration").First(&ticket, "id = ?", id).Error
 	if err != nil {
 		return nil, err
 	}
@@ -58,7 +58,7 @@ func (r *ticketRepository) FindByID(id string) (*models.Ticket, error) {
 
 func (r *ticketRepository) FindByUnitID(unitID string) ([]models.Ticket, error) {
 	var tickets []models.Ticket
-	err := r.db.Preload("Unit").Preload("Service").Preload("Counter").
+	err := r.db.Preload("Unit").Preload("Service").Preload("Counter").Preload("PreRegistration").
 		Where("unit_id = ? AND is_eod = ?", unitID, false).
 		Order("created_at asc").
 		Find(&tickets).Error

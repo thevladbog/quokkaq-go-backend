@@ -12,6 +12,7 @@ import (
 
 type TicketService interface {
 	CreateTicket(unitID, serviceID string) (*models.Ticket, error)
+	CreateTicketWithPreRegistration(unitID, serviceID, preRegID string) (*models.Ticket, error)
 	GetTicketByID(id string) (*models.Ticket, error)
 	GetTicketsByUnit(unitID string) ([]models.Ticket, error)
 	Recall(ticketID string) (*models.Ticket, error)
@@ -35,6 +36,14 @@ func NewTicketService(repo repository.TicketRepository, counterRepo repository.C
 }
 
 func (s *ticketService) CreateTicket(unitID, serviceID string) (*models.Ticket, error) {
+	return s.createTicketInternal(unitID, serviceID, nil)
+}
+
+func (s *ticketService) CreateTicketWithPreRegistration(unitID, serviceID, preRegID string) (*models.Ticket, error) {
+	return s.createTicketInternal(unitID, serviceID, &preRegID)
+}
+
+func (s *ticketService) createTicketInternal(unitID, serviceID string, preRegID *string) (*models.Ticket, error) {
 	// Generate Queue Number
 	date := time.Now().Format("2006-01-02")
 	seq, err := s.repo.GetNextSequence(unitID, serviceID, date)
@@ -54,12 +63,13 @@ func (s *ticketService) CreateTicket(unitID, serviceID string) (*models.Ticket, 
 	}
 
 	ticket := &models.Ticket{
-		UnitID:         unitID,
-		ServiceID:      serviceID,
-		QueueNumber:    queueNumber,
-		Status:         "waiting",
-		CreatedAt:      time.Now(),
-		MaxWaitingTime: service.MaxWaitingTime,
+		UnitID:            unitID,
+		ServiceID:         serviceID,
+		QueueNumber:       queueNumber,
+		Status:            "waiting",
+		CreatedAt:         time.Now(),
+		MaxWaitingTime:    service.MaxWaitingTime,
+		PreRegistrationID: preRegID,
 	}
 
 	if err := s.repo.Create(ticket); err != nil {
