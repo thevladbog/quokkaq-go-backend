@@ -142,7 +142,7 @@ func (r *ticketRepository) CountWaiting(unitID string) (int64, error) {
 
 func (r *ticketRepository) GetWaitingTickets(unitID string) ([]models.Ticket, error) {
 	var tickets []models.Ticket
-	err := r.db.Preload("Service").
+	err := r.db.Preload("Service").Preload("PreRegistration").
 		Where("unit_id = ? AND status = ? AND is_eod = ?", unitID, "waiting", false).
 		Order("priority desc, created_at asc").
 		Find(&tickets).Error
@@ -157,16 +157,18 @@ func (r *ticketRepository) UpdateStatusByUnit(unitID string, oldStatuses []strin
 }
 
 func (r *ticketRepository) GetActiveTicketByCounter(counterID string) (*models.Ticket, error) {
-	var ticket models.Ticket
-	err := r.db.Where("counter_id = ? AND status IN ? AND is_eod = ?", counterID, []string{"called", "in_service"}, false).
-		First(&ticket).Error
+	var tickets []models.Ticket
+	err := r.db.Preload("Service").Preload("PreRegistration").
+		Where("counter_id = ? AND status IN ? AND is_eod = ?", counterID, []string{"called", "in_service"}, false).
+		Limit(1).
+		Find(&tickets).Error
 	if err != nil {
-		if err == gorm.ErrRecordNotFound {
-			return nil, nil
-		}
 		return nil, err
 	}
-	return &ticket, nil
+	if len(tickets) == 0 {
+		return nil, nil
+	}
+	return &tickets[0], nil
 }
 
 func (r *ticketRepository) MarkAsEOD(unitID string) (int64, error) {
