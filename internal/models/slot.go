@@ -2,17 +2,19 @@ package models
 
 import (
 	"time"
+
+	"github.com/lib/pq"
 )
 
 type SlotConfig struct {
-	ID        string    `gorm:"primaryKey;default:gen_random_uuid()" json:"id"`
-	UnitID    string    `gorm:"not null;unique" json:"unitId"`
-	StartTime string    `gorm:"not null" json:"startTime"` // HH:MM
-	EndTime   string    `gorm:"not null" json:"endTime"`   // HH:MM
-	Interval  int       `gorm:"not null" json:"interval"`  // in minutes
-	Days      []string  `gorm:"type:text[]" json:"days"`   // ["monday", "tuesday", ...]
-	CreatedAt time.Time `gorm:"default:now()" json:"createdAt"`
-	UpdatedAt time.Time `gorm:"autoUpdateTime" json:"updatedAt"`
+	ID        string         `gorm:"primaryKey;default:gen_random_uuid()" json:"id"`
+	UnitID    string         `gorm:"not null;unique" json:"unitId"`
+	StartTime string         `gorm:"not null" json:"startTime"` // HH:MM
+	EndTime   string         `gorm:"not null" json:"endTime"`   // HH:MM
+	Interval  int            `gorm:"not null" json:"interval"`  // in minutes
+	Days      pq.StringArray `gorm:"type:text[]" json:"days"`   // ["monday", "tuesday", ...]
+	CreatedAt time.Time      `gorm:"default:now()" json:"createdAt"`
+	UpdatedAt time.Time      `gorm:"autoUpdateTime" json:"updatedAt"`
 
 	// Relations
 	Unit Unit `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-" swaggerignore:"true"`
