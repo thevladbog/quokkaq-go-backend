@@ -44,6 +44,14 @@ func (r *SlotRepository) DeleteWeeklyCapacities(unitID string) error {
 	return database.DB.Where("unit_id = ?", unitID).Delete(&models.WeeklySlotCapacity{}).Error
 }
 
+func (r *SlotRepository) DeleteWeeklyCapacitiesNotInDays(unitID string, days []string) error {
+	if len(days) == 0 {
+		// If no days are allowed, delete all capacities
+		return r.DeleteWeeklyCapacities(unitID)
+	}
+	return database.DB.Where("unit_id = ? AND day_of_week NOT IN ?", unitID, days).Delete(&models.WeeklySlotCapacity{}).Error
+}
+
 func (r *SlotRepository) GetDaySchedule(unitID, date string) (*models.DaySchedule, error) {
 	var schedule models.DaySchedule
 	err := database.DB.Preload("ServiceSlots").Where("unit_id = ? AND date = ?", unitID, date).First(&schedule).Error

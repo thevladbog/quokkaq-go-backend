@@ -21,6 +21,8 @@ require (
 	gorm.io/gorm v1.31.1
 )
 
+require github.com/lib/pq v1.10.9
+
 require (
 	github.com/KyleBanks/depth v1.2.1 // indirect
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.7.3 // indirect
