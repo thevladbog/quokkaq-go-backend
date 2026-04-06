@@ -126,7 +126,7 @@ Before running QuokkaQ Backend, ensure you have:
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/yourusername/quokkaq-go-backend.git
+git clone https://github.com/thevladbog/quokkaq-go-backend.git
 cd quokkaq-go-backend
 ```
 
