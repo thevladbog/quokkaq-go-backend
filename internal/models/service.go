@@ -15,7 +15,7 @@ type Service struct {
 	TextColor       *string `json:"textColor,omitempty"`
 	Prefix          *string `json:"prefix,omitempty"`
 	NumberSequence  *string `json:"numberSequence,omitempty"`
-	Duration        *int    `json:"duration,omitempty"`        // In seconds
+	Duration        *int    `json:"duration,omitempty"`       // In seconds
 	MaxWaitingTime  *int    `json:"maxWaitingTime,omitempty"` // In seconds
 	Prebook         bool    `gorm:"default:false" json:"prebook"`
 	IsLeaf          bool    `gorm:"default:false" json:"isLeaf"`

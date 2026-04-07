@@ -19,8 +19,8 @@ func NewInvitationHandler(service services.InvitationService) *InvitationHandler
 type CreateInvitationRequest struct {
 	Email       string          `json:"email"`
 	TemplateID  string          `json:"templateId"`
-	TargetUnits json.RawMessage `json:"targetUnits"`
-	TargetRoles json.RawMessage `json:"targetRoles"`
+	TargetUnits json.RawMessage `json:"targetUnits" swaggertype:"object"`
+	TargetRoles json.RawMessage `json:"targetRoles" swaggertype:"object"`
 }
 
 // CreateInvitation godoc

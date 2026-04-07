@@ -11,6 +11,8 @@ type UnitRepository interface {
 	Create(unit *models.Unit) error
 	FindAll() ([]models.Unit, error)
 	FindByID(id string) (*models.Unit, error)
+	// FindByIDLight loads only the unit row (no relations). Use for updates/auth checks; use FindByID for API responses that need nested data.
+	FindByIDLight(id string) (*models.Unit, error)
 	Update(unit *models.Unit) error
 	Delete(id string) error
 	AddMaterial(material *models.UnitMaterial) error
@@ -40,7 +42,16 @@ func (r *unitRepository) FindAll() ([]models.Unit, error) {
 
 func (r *unitRepository) FindByID(id string) (*models.Unit, error) {
 	var unit models.Unit
-	err := r.db.Preload("Services").Preload("Counters").First(&unit, "id = ?", id).Error
+	err := r.db.Preload("Services").Preload("Counters").Preload("Tickets").First(&unit, "id = ?", id).Error
+	if err != nil {
+		return nil, err
+	}
+	return &unit, nil
+}
+
+func (r *unitRepository) FindByIDLight(id string) (*models.Unit, error) {
+	var unit models.Unit
+	err := r.db.First(&unit, "id = ?", id).Error
 	if err != nil {
 		return nil, err
 	}

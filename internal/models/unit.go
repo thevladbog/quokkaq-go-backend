@@ -18,7 +18,7 @@ type Unit struct {
 	Code      string          `gorm:"unique;not null" json:"code"`
 	Name      string          `gorm:"not null" json:"name"`
 	Timezone  string          `gorm:"not null" json:"timezone"`
-	Config    json.RawMessage `gorm:"type:jsonb" json:"config,omitempty"`
+	Config    json.RawMessage `gorm:"type:jsonb" json:"config,omitempty" swaggertype:"object"`
 	CreatedAt time.Time       `gorm:"default:now()" json:"createdAt"`
 	UpdatedAt time.Time       `gorm:"autoUpdateTime" json:"updatedAt"`
 

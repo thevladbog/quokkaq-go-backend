@@ -1,11 +1,26 @@
 package middleware
 
 import (
+	"log"
 	"net/http"
 	"quokkaq-go-backend/internal/repository"
 
 	"github.com/go-chi/chi/v5"
 )
+
+// respondRepoFindError writes 404 for missing rows (GORM not found) or 500 + log for other failures. Returns true if the handler should stop.
+func respondRepoFindError(w http.ResponseWriter, err error, op string) bool {
+	if err == nil {
+		return false
+	}
+	if repository.IsNotFound(err) {
+		http.Error(w, "Not found", http.StatusNotFound)
+		return true
+	}
+	log.Printf("%s: %v", op, err)
+	http.Error(w, "Internal server error", http.StatusInternalServerError)
+	return true
+}
 
 // RequireAdmin allows only users with the "admin" role.
 func RequireAdmin(userRepo repository.UserRepository) func(http.Handler) http.Handler {
@@ -76,8 +91,7 @@ func RequireServiceUnit(userRepo repository.UserRepository, serviceRepo reposito
 				return
 			}
 			svc, err := serviceRepo.FindByID(serviceID)
-			if err != nil {
-				http.Error(w, "Not found", http.StatusNotFound)
+			if respondRepoFindError(w, err, "RequireServiceUnit serviceRepo.FindByID") {
 				return
 			}
 			allowed, err := userRepo.IsAdminOrHasUnitAccess(userID, svc.UnitID)
@@ -109,8 +123,7 @@ func RequireTicketUnit(userRepo repository.UserRepository, ticketRepo repository
 				return
 			}
 			ticket, err := ticketRepo.FindByID(ticketID)
-			if err != nil {
-				http.Error(w, "Not found", http.StatusNotFound)
+			if respondRepoFindError(w, err, "RequireTicketUnit ticketRepo.FindByID") {
 				return
 			}
 			allowed, err := userRepo.IsAdminOrHasUnitAccess(userID, ticket.UnitID)
@@ -142,8 +155,7 @@ func RequireBookingUnit(userRepo repository.UserRepository, bookingRepo reposito
 				return
 			}
 			b, err := bookingRepo.FindByID(bookingID)
-			if err != nil {
-				http.Error(w, "Not found", http.StatusNotFound)
+			if respondRepoFindError(w, err, "RequireBookingUnit bookingRepo.FindByID") {
 				return
 			}
 			allowed, err := userRepo.IsAdminOrHasUnitAccess(userID, b.UnitID)
@@ -175,8 +187,7 @@ func RequireCounterUnit(userRepo repository.UserRepository, counterRepo reposito
 				return
 			}
 			c, err := counterRepo.FindByID(counterID)
-			if err != nil {
-				http.Error(w, "Not found", http.StatusNotFound)
+			if respondRepoFindError(w, err, "RequireCounterUnit counterRepo.FindByID") {
 				return
 			}
 			allowed, err := userRepo.IsAdminOrHasUnitAccess(userID, c.UnitID)

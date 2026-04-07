@@ -13,6 +13,7 @@ import (
 	"quokkaq-go-backend/internal/services"
 	"quokkaq-go-backend/internal/ws"
 	"quokkaq-go-backend/pkg/database"
+	"strconv"
 
 	"github.com/MarceloPetrucio/go-scalar-api-reference"
 	"github.com/go-chi/chi/v5"
@@ -42,7 +43,16 @@ func main() {
 	config.Load()
 	database.Connect()
 
-	if os.Getenv("RUN_AUTO_MIGRATE") != "false" {
+	runAutoMigrate := true
+	if v := os.Getenv("RUN_AUTO_MIGRATE"); v != "" {
+		if b, err := strconv.ParseBool(v); err == nil {
+			runAutoMigrate = b
+		} else {
+			// Unrecognized values keep migrations enabled (same as unset; only explicit false opts out).
+			runAutoMigrate = true
+		}
+	}
+	if runAutoMigrate {
 		database.AutoMigrate(
 			&models.Company{},
 			&models.Unit{},

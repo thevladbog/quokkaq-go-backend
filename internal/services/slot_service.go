@@ -43,7 +43,7 @@ func (s *SlotService) UpdateConfig(config *models.SlotConfig) error {
 	}
 
 	// Clean up capacities for days that are no longer in the config
-	return s.repo.DeleteWeeklyCapacitiesNotInDays(config.UnitID, config.Days)
+	return s.repo.DeleteWeeklyCapacitiesNotInDays(config.UnitID, []string(config.Days))
 }
 
 func (s *SlotService) GetWeeklyCapacities(unitID string) ([]models.WeeklySlotCapacity, error) {

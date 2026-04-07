@@ -69,7 +69,7 @@ We actively welcome pull requests:
 
 ### Prerequisites
 
-- Go 1.25.4 or higher
+- Go 1.26.0 or higher
 - PostgreSQL 14+
 - Redis 6+
 - MinIO or S3-compatible storage

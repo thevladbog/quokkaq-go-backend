@@ -83,7 +83,7 @@ func (s *unitService) DeleteMaterial(id string) error {
 }
 
 func (s *unitService) UpdateAdSettings(unitID string, settings map[string]interface{}) error {
-	unit, err := s.repo.FindByID(unitID)
+	unit, err := s.repo.FindByIDLight(unitID)
 	if err != nil {
 		return err
 	}

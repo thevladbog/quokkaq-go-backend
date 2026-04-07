@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"errors"
 	"quokkaq-go-backend/internal/models"
 	"quokkaq-go-backend/pkg/database"
 
@@ -143,6 +144,9 @@ func (r *userRepository) EnsureRoleExists(name string) (*models.Role, error) {
 func (r *userRepository) IsAdmin(userID string) (bool, error) {
 	user, err := r.FindByID(userID)
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return false, nil
+		}
 		return false, err
 	}
 	for _, ur := range user.Roles {
@@ -159,6 +163,9 @@ func (r *userRepository) IsAdminOrHasUnitAccess(userID, unitID string) (bool, er
 	}
 	user, err := r.FindByID(userID)
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return false, nil
+		}
 		return false, err
 	}
 	for _, ur := range user.Roles {

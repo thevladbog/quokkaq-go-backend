@@ -86,7 +86,7 @@ func (w *jobWorker) handleTtsGenerate(ctx context.Context, t *asynq.Task) error 
 	log.Printf("Processing TTS generation for ticket %s (Queue: %s, Counter: %s)", p.TicketID, p.QueueNumber, p.CounterName)
 
 	text := fmt.Sprintf("Ticket number %s, please go to counter %s", p.QueueNumber, p.CounterName)
-	url, err := w.ttsService.GenerateAndUpload(text, p.TicketID)
+	url, err := w.ttsService.GenerateAndUpload(ctx, text, p.TicketID)
 	if err != nil {
 		return fmt.Errorf("failed to generate/upload TTS: %v", err)
 	}

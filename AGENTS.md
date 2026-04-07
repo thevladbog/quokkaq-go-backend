@@ -6,7 +6,7 @@
 
 ## Стек
 
-- Go 1.25.4, модуль `quokkaq-go-backend`
+- Go 1.26.0, модуль `quokkaq-go-backend`
 - HTTP: Chi v5, CORS, JWT (`golang-jwt/jwt`)
 - БД: PostgreSQL + GORM
 - Real-time: Gorilla WebSocket (`internal/ws/`) — комнаты по подразделениям
@@ -17,7 +17,7 @@
 
 ## Архитектура
 
-```
+```text
 handlers → services → repository → models (GORM)
      ↘ ws hub, Asynq workers
 ```
@@ -36,6 +36,7 @@ auth, users, units, tickets, services, counters, shifts, slots, bookings, pre-re
 - `docker-compose.yml`: postgres, redis, minio, backend — API **:3001**
 - После старта: Scalar `http://localhost:3001/swagger/`, OpenAPI в `docs/`
 - Новые эндпоинты: model → repository → service → handler → регистрация в `main.go` → аннотации swag → `swag init -g cmd/api/main.go -o ./docs`
+- Pull request: GitHub Actions — [`.github/workflows/ci.yml`](.github/workflows/ci.yml) (gofmt, vet, test, build, `go mod tidy`, сверка `docs/docs.go` / `swagger.json` / `swagger.yaml` с `swag init`, golangci-lint с `only-new-issues`).
 
 ## Фронтенд (соседний репозиторий)
 

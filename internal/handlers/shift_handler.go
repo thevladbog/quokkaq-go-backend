@@ -81,15 +81,18 @@ func (h *ShiftHandler) GetShiftCounters(w http.ResponseWriter, r *http.Request) 
 // @Produce      json
 // @Param        unitId path      string  true  "Unit ID"
 // @Success      200    {object}  map[string]interface{}
+// @Failure      401    {string}  string "Unauthorized"
 // @Failure      500    {string}  string "Internal Server Error"
 // @Router       /units/{unitId}/shift/eod [post]
 func (h *ShiftHandler) ExecuteEndOfDay(w http.ResponseWriter, r *http.Request) {
 	unitID := chi.URLParam(r, "unitId")
-	var actorID *string
-	if uid, ok := middleware.GetUserIDFromContext(r.Context()); ok {
-		actorID = &uid
+	uid, ok := middleware.GetUserIDFromContext(r.Context())
+	if !ok {
+		http.Error(w, "End of day requires an authenticated user; user id missing from request context", http.StatusUnauthorized)
+		return
 	}
-	result, err := h.service.ExecuteEndOfDay(unitID, actorID)
+	actorID := uid
+	result, err := h.service.ExecuteEndOfDay(unitID, &actorID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

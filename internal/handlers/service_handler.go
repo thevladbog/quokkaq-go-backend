@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"quokkaq-go-backend/internal/middleware"
 	"quokkaq-go-backend/internal/models"
@@ -26,9 +27,12 @@ func NewServiceHandler(service services.ServiceService, userRepo repository.User
 // @Tags         services
 // @Accept       json
 // @Produce      json
+// @Security     BearerAuth
 // @Param        service body models.Service true "Service Data"
 // @Success      201  {object}  models.Service
 // @Failure      400  {string}  string "Bad Request"
+// @Failure      401  {string}  string "Unauthorized"
+// @Failure      403  {string}  string "Forbidden"
 // @Failure      500  {string}  string "Internal Server Error"
 // @Router       /services [post]
 func (h *ServiceHandler) CreateService(w http.ResponseWriter, r *http.Request) {
@@ -113,6 +117,8 @@ func (h *ServiceHandler) GetServiceByID(w http.ResponseWriter, r *http.Request) 
 // @Param        service body      models.Service  true  "Service Data"
 // @Success      200     {object}  models.Service
 // @Failure      400     {string}  string "Bad Request"
+// @Failure      403     {string}  string "Forbidden"
+// @Failure      404     {string}  string "Not found"
 // @Failure      500     {string}  string "Internal Server Error"
 // @Router       /services/{id} [put]
 func (h *ServiceHandler) UpdateService(w http.ResponseWriter, r *http.Request) {
@@ -125,6 +131,14 @@ func (h *ServiceHandler) UpdateService(w http.ResponseWriter, r *http.Request) {
 	service.ID = id
 
 	if err := h.service.UpdateService(&service); err != nil {
+		if errors.Is(err, services.ErrServiceUnitImmutable) {
+			http.Error(w, err.Error(), http.StatusForbidden)
+			return
+		}
+		if repository.IsNotFound(err) {
+			http.Error(w, "Service not found", http.StatusNotFound)
+			return
+		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
