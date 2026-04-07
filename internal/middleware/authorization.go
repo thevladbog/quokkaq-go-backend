@@ -8,8 +8,8 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-// respondRepoFindError writes 404 for missing rows (GORM not found) or 500 + log for other failures. Returns true if the handler should stop.
-func respondRepoFindError(w http.ResponseWriter, err error, op string) bool {
+// RespondRepoFindError writes 404 for missing rows (GORM not found) or 500 + log for other failures. Returns true if the handler should stop.
+func RespondRepoFindError(w http.ResponseWriter, err error, op string) bool {
 	if err == nil {
 		return false
 	}
@@ -91,7 +91,7 @@ func RequireServiceUnit(userRepo repository.UserRepository, serviceRepo reposito
 				return
 			}
 			svc, err := serviceRepo.FindByID(serviceID)
-			if respondRepoFindError(w, err, "RequireServiceUnit serviceRepo.FindByID") {
+			if RespondRepoFindError(w, err, "RequireServiceUnit serviceRepo.FindByID") {
 				return
 			}
 			allowed, err := userRepo.IsAdminOrHasUnitAccess(userID, svc.UnitID)
@@ -123,7 +123,7 @@ func RequireTicketUnit(userRepo repository.UserRepository, ticketRepo repository
 				return
 			}
 			ticket, err := ticketRepo.FindByID(ticketID)
-			if respondRepoFindError(w, err, "RequireTicketUnit ticketRepo.FindByID") {
+			if RespondRepoFindError(w, err, "RequireTicketUnit ticketRepo.FindByID") {
 				return
 			}
 			allowed, err := userRepo.IsAdminOrHasUnitAccess(userID, ticket.UnitID)
@@ -155,7 +155,7 @@ func RequireBookingUnit(userRepo repository.UserRepository, bookingRepo reposito
 				return
 			}
 			b, err := bookingRepo.FindByID(bookingID)
-			if respondRepoFindError(w, err, "RequireBookingUnit bookingRepo.FindByID") {
+			if RespondRepoFindError(w, err, "RequireBookingUnit bookingRepo.FindByID") {
 				return
 			}
 			allowed, err := userRepo.IsAdminOrHasUnitAccess(userID, b.UnitID)
@@ -187,7 +187,7 @@ func RequireCounterUnit(userRepo repository.UserRepository, counterRepo reposito
 				return
 			}
 			c, err := counterRepo.FindByID(counterID)
-			if respondRepoFindError(w, err, "RequireCounterUnit counterRepo.FindByID") {
+			if RespondRepoFindError(w, err, "RequireCounterUnit counterRepo.FindByID") {
 				return
 			}
 			allowed, err := userRepo.IsAdminOrHasUnitAccess(userID, c.UnitID)

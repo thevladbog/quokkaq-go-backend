@@ -228,23 +228,40 @@ func (h *UserHandler) GetSystemStatus(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]bool{"initialized": initialized})
 }
 
+type setupFirstAdminRequest struct {
+	Name     string `json:"name"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
 // SetupFirstAdmin godoc
 // @Summary      Setup first admin
 // @Description  Creates the first administrator if the system is not initialized
 // @Tags         system
 // @Accept       json
 // @Produce      json
-// @Param        user body models.User true "User Data"
+// @Param        request body setupFirstAdminRequest true "Admin user"
 // @Success      201  {object}  models.User
 // @Failure      400  {string}  string "Bad Request"
 // @Failure      403  {string}  string "Forbidden - System already initialized"
 // @Failure      500  {string}  string "Internal Server Error"
 // @Router       /system/setup [post]
 func (h *UserHandler) SetupFirstAdmin(w http.ResponseWriter, r *http.Request) {
-	var user models.User
-	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
+	var req setupFirstAdminRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
+	}
+	if req.Name == "" || req.Email == "" || req.Password == "" {
+		http.Error(w, "name, email and password are required", http.StatusBadRequest)
+		return
+	}
+	email := req.Email
+	plainPassword := req.Password
+	user := models.User{
+		Name:     req.Name,
+		Email:    &email,
+		Password: &plainPassword,
 	}
 
 	if err := h.service.CreateFirstAdmin(&user); err != nil {

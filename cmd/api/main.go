@@ -77,6 +77,7 @@ func main() {
 			&models.WeeklySlotCapacity{},
 			&models.DaySchedule{},
 			&models.ServiceSlot{},
+			&models.DesktopTerminal{},
 		)
 	}
 
@@ -103,6 +104,7 @@ func main() {
 	invitationRepo := repository.NewInvitationRepository()
 	slotRepo := repository.NewSlotRepository()
 	preRegRepo := repository.NewPreRegistrationRepository()
+	desktopTerminalRepo := repository.NewDesktopTerminalRepository()
 
 	userService := services.NewUserService(userRepo)
 	mailService := services.NewMailService()
@@ -117,6 +119,7 @@ func main() {
 	invitationService := services.NewInvitationService(invitationRepo, mailService, userRepo, templateService)
 	slotService := services.NewSlotService(slotRepo, preRegRepo)
 	preRegService := services.NewPreRegistrationService(preRegRepo, slotRepo, ticketRepo, serviceRepo)
+	desktopTerminalService := services.NewDesktopTerminalService(desktopTerminalRepo, unitRepo)
 
 	userHandler := handlers.NewUserHandler(userService)
 	authHandler := handlers.NewAuthHandler(authService)
@@ -131,6 +134,7 @@ func main() {
 	slotHandler := handlers.NewSlotHandler(slotService)
 	preRegHandler := handlers.NewPreRegistrationHandler(preRegService, ticketService)
 	uploadHandler := handlers.NewUploadHandler(storageService)
+	desktopTerminalHandler := handlers.NewDesktopTerminalHandler(desktopTerminalService)
 
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
@@ -140,7 +144,9 @@ func main() {
 	if len(allowedOrigins) == 0 {
 		allowedOrigins = []string{
 			"http://localhost:3000",
+			"http://127.0.0.1:3000",
 			"http://localhost:3001",
+			"http://127.0.0.1:3001",
 			"https://quokkaq.v-b.tech",
 			"https://app.quokkaq.v-b.tech",
 		}
@@ -193,6 +199,7 @@ func main() {
 		r.Post("/login", authHandler.Login)
 		r.Post("/forgot-password", authHandler.RequestPasswordReset)
 		r.Post("/reset-password", authHandler.ResetPassword)
+		r.With(authmiddleware.TerminalBootstrapRateLimit).Post("/terminal/bootstrap", desktopTerminalHandler.Bootstrap)
 
 		r.Group(func(r chi.Router) {
 			r.Use(authmiddleware.JWTAuth)
@@ -310,6 +317,16 @@ func main() {
 		r.Put("/{id}", templateHandler.UpdateTemplate)
 		r.Patch("/{id}", templateHandler.UpdateTemplate)
 		r.Delete("/{id}", templateHandler.DeleteTemplate)
+	})
+
+	r.Route("/desktop-terminals", func(r chi.Router) {
+		r.Use(authmiddleware.JWTAuth)
+		r.Use(authmiddleware.RequireAdmin(userRepo))
+		r.Post("/", desktopTerminalHandler.Create)
+		r.Get("/", desktopTerminalHandler.List)
+		r.Get("/{id}", desktopTerminalHandler.GetByID)
+		r.Patch("/{id}", desktopTerminalHandler.Update)
+		r.Post("/{id}/revoke", desktopTerminalHandler.Revoke)
 	})
 
 	r.Route("/invitations", func(r chi.Router) {

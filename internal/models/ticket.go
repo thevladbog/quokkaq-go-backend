@@ -27,7 +27,8 @@ type Ticket struct {
 	Service         Service          `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"service,omitempty"`
 	Booking         *Booking         `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;" json:"booking,omitempty"`
 	Counter         *Counter         `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;" json:"counter,omitempty"`
-	PreRegistration *PreRegistration `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;" json:"preRegistration,omitempty"`
+	// No DB FK: avoids AutoMigrate cycle with pre_registrations.ticket_id → tickets.id
+	PreRegistration *PreRegistration `gorm:"foreignKey:PreRegistrationID;references:ID;constraint:false" json:"preRegistration,omitempty"`
 	Histories       []TicketHistory  `gorm:"foreignKey:TicketID" json:"-"`
 }
 

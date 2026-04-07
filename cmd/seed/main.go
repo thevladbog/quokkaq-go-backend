@@ -21,6 +21,7 @@ func main() {
 	// Drop all tables
 	fmt.Println("Dropping existing tables...")
 	database.DB.Migrator().DropTable(
+		&models.DesktopTerminal{},
 		&models.TicketHistory{},
 		&models.Ticket{},
 		&models.TicketNumberSequence{},
@@ -60,6 +61,7 @@ func main() {
 		&models.UnitMaterial{},
 		&models.Invitation{},
 		&models.MessageTemplate{},
+		&models.DesktopTerminal{},
 	)
 
 	// Create seed data

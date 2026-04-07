@@ -86,6 +86,8 @@ func (h *UnitHandler) GetUnitByID(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Unit not found", http.StatusNotFound)
 		return
 	}
+	// Kiosk config (e.g. PIN) must not be served from stale HTTP caches (desktop WebViews cache aggressively).
+	w.Header().Set("Cache-Control", "no-store")
 	json.NewEncoder(w).Encode(unit)
 }
 
