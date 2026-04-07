@@ -6,6 +6,9 @@ import (
 	"quokkaq-go-backend/internal/repository"
 )
 
+// ErrServiceUnitImmutable is returned when an update tries to change a service's unit.
+var ErrServiceUnitImmutable = errors.New("service unit cannot be reassigned")
+
 type ServiceService interface {
 	CreateService(service *models.Service) error
 	GetServicesByUnit(unitID string) ([]models.Service, error)
@@ -38,6 +41,15 @@ func (s *serviceService) GetServiceByID(id string) (*models.Service, error) {
 }
 
 func (s *serviceService) UpdateService(service *models.Service) error {
+	existing, err := s.repo.FindByID(service.ID)
+	if err != nil {
+		return err
+	}
+	if service.UnitID != "" && service.UnitID != existing.UnitID {
+		return ErrServiceUnitImmutable
+	}
+	// Never persist a caller-supplied unit change; keep the row's unit.
+	service.UnitID = existing.UnitID
 	return s.repo.Update(service)
 }
 

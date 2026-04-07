@@ -24,6 +24,46 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/auth/forgot-password": {
+            "post": {
+                "description": "Sends a password reset link to the user's email",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Request Password Reset",
+                "parameters": [
+                    {
+                        "description": "Email Address",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ForgotPasswordRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Reset link sent",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/auth/login": {
             "post": {
                 "description": "Authenticates a user and returns a JWT token",
@@ -100,6 +140,52 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "User not found",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/reset-password": {
+            "post": {
+                "description": "Resets the user's password using a valid token",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Reset Password",
+                "parameters": [
+                    {
+                        "description": "New Password and Token",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ResetPasswordRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Password reset successfully",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "Invalid or expired token",
                         "schema": {
                             "type": "string"
                         }
@@ -425,6 +511,45 @@ const docTemplate = `{
                 }
             }
         },
+        "/counters/{id}/call-next": {
+            "post": {
+                "description": "Calls the next waiting ticket for the counter",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "counters"
+                ],
+                "summary": "Call next ticket",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Counter ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Counter not found or no tickets",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/counters/{id}/force-release": {
             "post": {
                 "description": "Force releases a counter (supervisor)",
@@ -569,7 +694,7 @@ const docTemplate = `{
                 }
             },
             "post": {
-                "description": "Creates a new invitation for a user",
+                "description": "Creates a new invitation for a user with optional pre-assigned units and roles",
                 "consumes": [
                     "application/json"
                 ],
@@ -613,6 +738,90 @@ const docTemplate = `{
                 }
             }
         },
+        "/invitations/register": {
+            "post": {
+                "description": "Registers a new user using an invitation token",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "invitations"
+                ],
+                "summary": "Register a new user via invitation",
+                "parameters": [
+                    {
+                        "description": "Register Request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.RegisterUserRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.User"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/invitations/token/{token}": {
+            "get": {
+                "description": "Retrieves an invitation by its token",
+                "tags": [
+                    "invitations"
+                ],
+                "summary": "Get invitation by token",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Invitation Token",
+                        "name": "token",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.Invitation"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/invitations/{id}": {
             "delete": {
                 "description": "Deletes an invitation by its ID",
@@ -642,8 +851,51 @@ const docTemplate = `{
                 }
             }
         },
+        "/invitations/{id}/resend": {
+            "patch": {
+                "description": "Resends an active invitation by its ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "invitations"
+                ],
+                "summary": "Resend an invitation",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Invitation ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/services": {
             "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Creates a new service for a unit",
                 "consumes": [
                     "application/json"
@@ -675,6 +927,18 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
                         "schema": {
                             "type": "string"
                         }
@@ -765,6 +1029,18 @@ const docTemplate = `{
                             "type": "string"
                         }
                     },
+                    "404": {
+                        "description": "Not found",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict (e.g. unit change not allowed)",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -791,6 +1067,87 @@ const docTemplate = `{
                 "responses": {
                     "204": {
                         "description": "No Content"
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/system/setup": {
+            "post": {
+                "description": "Creates the first administrator if the system is not initialized",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "system"
+                ],
+                "summary": "Setup first admin",
+                "parameters": [
+                    {
+                        "description": "User Data",
+                        "name": "user",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.User"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/models.User"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden - System already initialized",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/system/status": {
+            "get": {
+                "description": "Checks if the system is initialized (has users)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "system"
+                ],
+                "summary": "Get system status",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "boolean"
+                            }
+                        }
                     },
                     "500": {
                         "description": "Internal Server Error",
@@ -980,6 +1337,41 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/tickets/{id}": {
+            "get": {
+                "description": "Retrieves a ticket by its ID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tickets"
+                ],
+                "summary": "Get ticket by ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Ticket ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.Ticket"
+                        }
+                    },
+                    "404": {
+                        "description": "Ticket not found",
                         "schema": {
                             "type": "string"
                         }
@@ -1783,9 +2175,48 @@ const docTemplate = `{
                 }
             }
         },
+        "/units/{unitId}/shift/dashboard": {
+            "get": {
+                "description": "Retrieves dashboard statistics for a unit",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "shift"
+                ],
+                "summary": "Get dashboard stats",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Unit ID",
+                        "name": "unitId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/units/{unitId}/shift/eod": {
             "post": {
                 "description": "Performs end of day operations for a unit",
+                "consumes": [
+                    "application/json"
+                ],
                 "produces": [
                     "application/json"
                 ],
@@ -1808,6 +2239,12 @@ const docTemplate = `{
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "string"
                         }
                     },
                     "500": {
@@ -1846,42 +2283,6 @@ const docTemplate = `{
                             "items": {
                                 "$ref": "#/definitions/models.Ticket"
                             }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
-        "/units/{unitId}/shift/stats": {
-            "get": {
-                "description": "Retrieves dashboard statistics for a unit",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "shift"
-                ],
-                "summary": "Get dashboard stats",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Unit ID",
-                        "name": "unitId",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
                         }
                     },
                     "500": {
@@ -2201,7 +2602,7 @@ const docTemplate = `{
         },
         "/users/{id}/units/assign": {
             "post": {
-                "description": "Assigns a unit to a user",
+                "description": "Assigns a unit to a user with optional permissions",
                 "consumes": [
                     "application/json"
                 ],
@@ -2316,6 +2717,12 @@ const docTemplate = `{
         "handlers.AssignUnitRequest": {
             "type": "object",
             "properties": {
+                "permissions": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "unitId": {
                     "type": "string"
                 }
@@ -2337,6 +2744,15 @@ const docTemplate = `{
             "properties": {
                 "email": {
                     "type": "string"
+                },
+                "targetRoles": {
+                    "type": "object"
+                },
+                "targetUnits": {
+                    "type": "object"
+                },
+                "templateId": {
+                    "type": "string"
                 }
             }
         },
@@ -2347,6 +2763,14 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "unitId": {
+                    "type": "string"
+                }
+            }
+        },
+        "handlers.ForgotPasswordRequest": {
+            "type": "object",
+            "properties": {
+                "email": {
                     "type": "string"
                 }
             }
@@ -2378,10 +2802,35 @@ const docTemplate = `{
                 }
             }
         },
+        "handlers.RegisterUserRequest": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                },
+                "token": {
+                    "type": "string"
+                }
+            }
+        },
         "handlers.RemoveUnitRequest": {
             "type": "object",
             "properties": {
                 "unitId": {
+                    "type": "string"
+                }
+            }
+        },
+        "handlers.ResetPasswordRequest": {
+            "type": "object",
+            "properties": {
+                "newPassword": {
+                    "type": "string"
+                },
+                "token": {
                     "type": "string"
                 }
             }
@@ -2443,6 +2892,9 @@ const docTemplate = `{
                 "assignedTo": {
                     "type": "string"
                 },
+                "assignedUser": {
+                    "$ref": "#/definitions/models.User"
+                },
                 "id": {
                     "type": "string"
                 },
@@ -2471,6 +2923,13 @@ const docTemplate = `{
                 },
                 "status": {
                     "type": "string"
+                },
+                "targetRoles": {
+                    "type": "object"
+                },
+                "targetUnits": {
+                    "description": "Stored permissions to be assigned upon acceptance (JSONB; OpenAPI as generic object)",
+                    "type": "object"
                 },
                 "token": {
                     "type": "string"
@@ -2502,6 +2961,60 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "subject": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.PreRegistration": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "description": "6-digit unique code",
+                    "type": "string"
+                },
+                "comment": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "customerName": {
+                    "type": "string"
+                },
+                "customerPhone": {
+                    "type": "string"
+                },
+                "date": {
+                    "description": "YYYY-MM-DD",
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "service": {
+                    "$ref": "#/definitions/models.Service"
+                },
+                "serviceId": {
+                    "type": "string"
+                },
+                "status": {
+                    "description": "created, canceled, ticket_issued, completed",
+                    "type": "string"
+                },
+                "ticket": {
+                    "$ref": "#/definitions/models.Ticket"
+                },
+                "ticketId": {
+                    "type": "string"
+                },
+                "time": {
+                    "description": "HH:MM",
+                    "type": "string"
+                },
+                "unitId": {
                     "type": "string"
                 },
                 "updatedAt": {
@@ -2542,6 +3055,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "duration": {
+                    "description": "In seconds",
                     "type": "integer"
                 },
                 "gridCol": {
@@ -2565,6 +3079,10 @@ const docTemplate = `{
                 },
                 "isLeaf": {
                     "type": "boolean"
+                },
+                "maxWaitingTime": {
+                    "description": "In seconds",
+                    "type": "integer"
                 },
                 "name": {
                     "type": "string"
@@ -2591,6 +3109,42 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "unitId": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.SlotConfig": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "days": {
+                    "description": "[\"monday\", \"tuesday\", ...]",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "endTime": {
+                    "description": "HH:MM",
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "interval": {
+                    "description": "in minutes",
+                    "type": "integer"
+                },
+                "startTime": {
+                    "description": "HH:MM",
+                    "type": "string"
+                },
+                "unitId": {
+                    "type": "string"
+                },
+                "updatedAt": {
                     "type": "string"
                 }
             }
@@ -2625,7 +3179,20 @@ const docTemplate = `{
                 "id": {
                     "type": "string"
                 },
+                "isEod": {
+                    "type": "boolean"
+                },
                 "lastCalledAt": {
+                    "type": "string"
+                },
+                "maxWaitingTime": {
+                    "description": "Snapshot from Service at creation",
+                    "type": "integer"
+                },
+                "preRegistration": {
+                    "$ref": "#/definitions/models.PreRegistration"
+                },
+                "preRegistrationId": {
                     "type": "string"
                 },
                 "priority": {
@@ -2658,10 +3225,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "config": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
+                    "type": "object"
                 },
                 "counters": {
                     "type": "array",
@@ -2678,11 +3242,20 @@ const docTemplate = `{
                 "name": {
                     "type": "string"
                 },
+                "preRegistrations": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.PreRegistration"
+                    }
+                },
                 "services": {
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/models.Service"
                     }
+                },
+                "slotConfig": {
+                    "$ref": "#/definitions/models.SlotConfig"
                 },
                 "tickets": {
                     "type": "array",
@@ -2788,6 +3361,9 @@ const docTemplate = `{
                     "items": {
                         "type": "string"
                     }
+                },
+                "unit": {
+                    "$ref": "#/definitions/models.Unit"
                 },
                 "unitId": {
                     "type": "string"

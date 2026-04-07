@@ -2,6 +2,10 @@ basePath: /
 definitions:
   handlers.AssignUnitRequest:
     properties:
+      permissions:
+        items:
+          type: string
+        type: array
       unitId:
         type: string
     type: object
@@ -16,12 +20,23 @@ definitions:
     properties:
       email:
         type: string
+      targetRoles:
+        type: object
+      targetUnits:
+        type: object
+      templateId:
+        type: string
     type: object
   handlers.CreateTicketRequest:
     properties:
       serviceId:
         type: string
       unitId:
+        type: string
+    type: object
+  handlers.ForgotPasswordRequest:
+    properties:
+      email:
         type: string
     type: object
   handlers.LoginRequest:
@@ -41,9 +56,25 @@ definitions:
       counterId:
         type: string
     type: object
+  handlers.RegisterUserRequest:
+    properties:
+      name:
+        type: string
+      password:
+        type: string
+      token:
+        type: string
+    type: object
   handlers.RemoveUnitRequest:
     properties:
       unitId:
+        type: string
+    type: object
+  handlers.ResetPasswordRequest:
+    properties:
+      newPassword:
+        type: string
+      token:
         type: string
     type: object
   handlers.TransferRequest:
@@ -83,6 +114,8 @@ definitions:
     properties:
       assignedTo:
         type: string
+      assignedUser:
+        $ref: '#/definitions/models.User'
       id:
         type: string
       name:
@@ -102,6 +135,12 @@ definitions:
         type: string
       status:
         type: string
+      targetRoles:
+        type: object
+      targetUnits:
+        description: Stored permissions to be assigned upon acceptance (JSONB; OpenAPI
+          as generic object)
+        type: object
       token:
         type: string
       updatedAt:
@@ -122,6 +161,43 @@ definitions:
       name:
         type: string
       subject:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  models.PreRegistration:
+    properties:
+      code:
+        description: 6-digit unique code
+        type: string
+      comment:
+        type: string
+      createdAt:
+        type: string
+      customerName:
+        type: string
+      customerPhone:
+        type: string
+      date:
+        description: YYYY-MM-DD
+        type: string
+      id:
+        type: string
+      service:
+        $ref: '#/definitions/models.Service'
+      serviceId:
+        type: string
+      status:
+        description: created, canceled, ticket_issued, completed
+        type: string
+      ticket:
+        $ref: '#/definitions/models.Ticket'
+      ticketId:
+        type: string
+      time:
+        description: HH:MM
+        type: string
+      unitId:
         type: string
       updatedAt:
         type: string
@@ -148,6 +224,7 @@ definitions:
       descriptionRu:
         type: string
       duration:
+        description: In seconds
         type: integer
       gridCol:
         type: integer
@@ -164,6 +241,9 @@ definitions:
         type: string
       isLeaf:
         type: boolean
+      maxWaitingTime:
+        description: In seconds
+        type: integer
       name:
         type: string
       nameEn:
@@ -181,6 +261,31 @@ definitions:
       textColor:
         type: string
       unitId:
+        type: string
+    type: object
+  models.SlotConfig:
+    properties:
+      createdAt:
+        type: string
+      days:
+        description: '["monday", "tuesday", ...]'
+        items:
+          type: string
+        type: array
+      endTime:
+        description: HH:MM
+        type: string
+      id:
+        type: string
+      interval:
+        description: in minutes
+        type: integer
+      startTime:
+        description: HH:MM
+        type: string
+      unitId:
+        type: string
+      updatedAt:
         type: string
     type: object
   models.Ticket:
@@ -203,7 +308,16 @@ definitions:
         type: string
       id:
         type: string
+      isEod:
+        type: boolean
       lastCalledAt:
+        type: string
+      maxWaitingTime:
+        description: Snapshot from Service at creation
+        type: integer
+      preRegistration:
+        $ref: '#/definitions/models.PreRegistration'
+      preRegistrationId:
         type: string
       priority:
         type: integer
@@ -225,9 +339,7 @@ definitions:
       companyId:
         type: string
       config:
-        items:
-          type: integer
-        type: array
+        type: object
       counters:
         items:
           $ref: '#/definitions/models.Counter'
@@ -238,10 +350,16 @@ definitions:
         type: string
       name:
         type: string
+      preRegistrations:
+        items:
+          $ref: '#/definitions/models.PreRegistration'
+        type: array
       services:
         items:
           $ref: '#/definitions/models.Service'
         type: array
+      slotConfig:
+        $ref: '#/definitions/models.SlotConfig'
       tickets:
         items:
           $ref: '#/definitions/models.Ticket'
@@ -311,6 +429,8 @@ definitions:
         items:
           type: string
         type: array
+      unit:
+        $ref: '#/definitions/models.Unit'
       unitId:
         type: string
       userId:
@@ -330,6 +450,32 @@ info:
   title: QuokkaQ Go Backend API
   version: "1.0"
 paths:
+  /auth/forgot-password:
+    post:
+      consumes:
+      - application/json
+      description: Sends a password reset link to the user's email
+      parameters:
+      - description: Email Address
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.ForgotPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Reset link sent
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+      summary: Request Password Reset
+      tags:
+      - auth
   /auth/login:
     post:
       consumes:
@@ -381,6 +527,36 @@ paths:
       security:
       - BearerAuth: []
       summary: Get current user
+      tags:
+      - auth
+  /auth/reset-password:
+    post:
+      consumes:
+      - application/json
+      description: Resets the user's password using a valid token
+      parameters:
+      - description: New Password and Token
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.ResetPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Password reset successfully
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "401":
+          description: Invalid or expired token
+          schema:
+            type: string
+      summary: Reset Password
       tags:
       - auth
   /bookings:
@@ -593,6 +769,32 @@ paths:
       summary: Update a counter
       tags:
       - counters
+  /counters/{id}/call-next:
+    post:
+      consumes:
+      - application/json
+      description: Calls the next waiting ticket for the counter
+      parameters:
+      - description: Counter ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Counter not found or no tickets
+          schema:
+            type: string
+      summary: Call next ticket
+      tags:
+      - counters
   /counters/{id}/force-release:
     post:
       consumes:
@@ -691,7 +893,8 @@ paths:
     post:
       consumes:
       - application/json
-      description: Creates a new invitation for a user
+      description: Creates a new invitation for a user with optional pre-assigned
+        units and roles
       parameters:
       - description: Invitation Request
         in: body
@@ -736,6 +939,86 @@ paths:
       summary: Delete an invitation
       tags:
       - invitations
+  /invitations/{id}/resend:
+    patch:
+      consumes:
+      - application/json
+      description: Resends an active invitation by its ID
+      parameters:
+      - description: Invitation ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Resend an invitation
+      tags:
+      - invitations
+  /invitations/register:
+    post:
+      consumes:
+      - application/json
+      description: Registers a new user using an invitation token
+      parameters:
+      - description: Register Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.RegisterUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.User'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Register a new user via invitation
+      tags:
+      - invitations
+  /invitations/token/{token}:
+    get:
+      description: Retrieves an invitation by its token
+      parameters:
+      - description: Invitation Token
+        in: path
+        name: token
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Invitation'
+        "404":
+          description: Not Found
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Get invitation by token
+      tags:
+      - invitations
   /services:
     post:
       consumes:
@@ -759,10 +1042,20 @@ paths:
           description: Bad Request
           schema:
             type: string
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "403":
+          description: Forbidden
+          schema:
+            type: string
         "500":
           description: Internal Server Error
           schema:
             type: string
+      security:
+      - BearerAuth: []
       summary: Create a new service
       tags:
       - services
@@ -834,6 +1127,14 @@ paths:
           description: Bad Request
           schema:
             type: string
+        "404":
+          description: Not found
+          schema:
+            type: string
+        "409":
+          description: Conflict (e.g. unit change not allowed)
+          schema:
+            type: string
         "500":
           description: Internal Server Error
           schema:
@@ -841,6 +1142,59 @@ paths:
       summary: Update a service
       tags:
       - services
+  /system/setup:
+    post:
+      consumes:
+      - application/json
+      description: Creates the first administrator if the system is not initialized
+      parameters:
+      - description: User Data
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/models.User'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.User'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "403":
+          description: Forbidden - System already initialized
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Setup first admin
+      tags:
+      - system
+  /system/status:
+    get:
+      description: Checks if the system is initialized (has users)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: boolean
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Get system status
+      tags:
+      - system
   /templates:
     get:
       description: Retrieves all message templates
@@ -964,6 +1318,29 @@ paths:
       summary: Update a template
       tags:
       - templates
+  /tickets/{id}:
+    get:
+      description: Retrieves a ticket by its ID
+      parameters:
+      - description: Ticket ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Ticket'
+        "404":
+          description: Ticket not found
+          schema:
+            type: string
+      summary: Get ticket by ID
+      tags:
+      - tickets
   /tickets/{id}/pick:
     post:
       consumes:
@@ -1490,8 +1867,34 @@ paths:
       summary: Get shift counters
       tags:
       - shift
+  /units/{unitId}/shift/dashboard:
+    get:
+      description: Retrieves dashboard statistics for a unit
+      parameters:
+      - description: Unit ID
+        in: path
+        name: unitId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Get dashboard stats
+      tags:
+      - shift
   /units/{unitId}/shift/eod:
     post:
+      consumes:
+      - application/json
       description: Performs end of day operations for a unit
       parameters:
       - description: Unit ID
@@ -1507,6 +1910,10 @@ paths:
           schema:
             additionalProperties: true
             type: object
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
         "500":
           description: Internal Server Error
           schema:
@@ -1537,30 +1944,6 @@ paths:
           schema:
             type: string
       summary: Get queue tickets
-      tags:
-      - shift
-  /units/{unitId}/shift/stats:
-    get:
-      description: Retrieves dashboard statistics for a unit
-      parameters:
-      - description: Unit ID
-        in: path
-        name: unitId
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            type: string
-      summary: Get dashboard stats
       tags:
       - shift
   /units/{unitId}/tickets:
@@ -1769,7 +2152,7 @@ paths:
     post:
       consumes:
       - application/json
-      description: Assigns a unit to a user
+      description: Assigns a unit to a user with optional permissions
       parameters:
       - description: User ID
         in: path

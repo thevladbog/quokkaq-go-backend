@@ -83,25 +83,9 @@ func (s *unitService) DeleteMaterial(id string) error {
 }
 
 func (s *unitService) UpdateAdSettings(unitID string, settings map[string]interface{}) error {
-	unit, err := s.repo.FindByID(unitID)
-	if err != nil {
-		return err
-	}
-
-	// Update config with ad settings
-	// Assuming settings is the full ad settings object
-	// We might need to merge it if Config contains other things.
-	// For now, let's assume Config IS the ad settings or contains it.
-	// If Config is jsonb, we can marshal settings to bytes.
-
-	// TODO: Better handling of Config structure.
-	// For now, just overwrite Config with new settings.
-
 	bytes, err := json.Marshal(settings)
 	if err != nil {
 		return err
 	}
-	unit.Config = json.RawMessage(bytes)
-
-	return s.repo.Update(unit)
+	return s.repo.UpdateConfig(unitID, json.RawMessage(bytes))
 }

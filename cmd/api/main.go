@@ -13,6 +13,7 @@ import (
 	"quokkaq-go-backend/internal/services"
 	"quokkaq-go-backend/internal/ws"
 	"quokkaq-go-backend/pkg/database"
+	"strconv"
 
 	"github.com/MarceloPetrucio/go-scalar-api-reference"
 	"github.com/go-chi/chi/v5"
@@ -42,42 +43,49 @@ func main() {
 	config.Load()
 	database.Connect()
 
-	// Auto Migrate
-	database.AutoMigrate(
-		&models.Company{},
-		&models.Unit{},
-		&models.User{},
-		&models.Role{},
-		&models.UserRole{},
-		&models.UserUnit{},
-		&models.Service{},
-		&models.Counter{},
-		&models.Ticket{},
-		&models.TicketHistory{},
-		&models.TicketNumberSequence{},
-		&models.Booking{},
-		&models.Notification{},
-		&models.AuditLog{},
-		&models.UnitMaterial{},
-		&models.Invitation{},
-		&models.MessageTemplate{},
-		&models.PasswordResetToken{},
-		&models.PreRegistration{},
-		&models.SlotConfig{},
-		&models.WeeklySlotCapacity{},
-		&models.DaySchedule{},
-		&models.ServiceSlot{},
-	)
+	runAutoMigrate := true
+	if v := os.Getenv("RUN_AUTO_MIGRATE"); v != "" {
+		if b, err := strconv.ParseBool(v); err == nil {
+			runAutoMigrate = b
+		} else {
+			// Unrecognized values keep migrations enabled (same as unset; only explicit false opts out).
+			runAutoMigrate = true
+		}
+	}
+	if runAutoMigrate {
+		database.AutoMigrate(
+			&models.Company{},
+			&models.Unit{},
+			&models.User{},
+			&models.Role{},
+			&models.UserRole{},
+			&models.UserUnit{},
+			&models.Service{},
+			&models.Counter{},
+			&models.Ticket{},
+			&models.TicketHistory{},
+			&models.TicketNumberSequence{},
+			&models.Booking{},
+			&models.Notification{},
+			&models.AuditLog{},
+			&models.UnitMaterial{},
+			&models.Invitation{},
+			&models.MessageTemplate{},
+			&models.PasswordResetToken{},
+			&models.PreRegistration{},
+			&models.SlotConfig{},
+			&models.WeeklySlotCapacity{},
+			&models.DaySchedule{},
+			&models.ServiceSlot{},
+		)
+	}
 
-	// WebSocket Hub
 	hub := ws.NewHub()
 	go hub.Run()
 
-	// Background Jobs
 	jobClient := jobs.NewJobClient()
 	defer jobClient.Close()
 
-	// Initialize Storage and TTS Services
 	storageService := services.NewStorageService()
 	ttsService := services.NewTtsService(storageService)
 
@@ -85,7 +93,6 @@ func main() {
 	jobWorker.Start()
 	defer jobWorker.Stop()
 
-	// Repositories
 	userRepo := repository.NewUserRepository()
 	unitRepo := repository.NewUnitRepository()
 	ticketRepo := repository.NewTicketRepository()
@@ -97,7 +104,6 @@ func main() {
 	slotRepo := repository.NewSlotRepository()
 	preRegRepo := repository.NewPreRegistrationRepository()
 
-	// Services
 	userService := services.NewUserService(userRepo)
 	mailService := services.NewMailService()
 	authService := services.NewAuthService(userRepo, mailService)
@@ -112,32 +118,40 @@ func main() {
 	slotService := services.NewSlotService(slotRepo, preRegRepo)
 	preRegService := services.NewPreRegistrationService(preRegRepo, slotRepo, ticketRepo, serviceRepo)
 
-	// Handlers
 	userHandler := handlers.NewUserHandler(userService)
 	authHandler := handlers.NewAuthHandler(authService)
 	unitHandler := handlers.NewUnitHandler(unitService, storageService)
 	ticketHandler := handlers.NewTicketHandler(ticketService)
-	serviceHandler := handlers.NewServiceHandler(serviceService)
+	serviceHandler := handlers.NewServiceHandler(serviceService, userRepo)
 	counterHandler := handlers.NewCounterHandler(counterService)
-	bookingHandler := handlers.NewBookingHandler(bookingService)
+	bookingHandler := handlers.NewBookingHandler(bookingService, userRepo)
 	shiftHandler := handlers.NewShiftHandler(shiftService)
 	templateHandler := handlers.NewTemplateHandler(templateService)
 	invitationHandler := handlers.NewInvitationHandler(invitationService)
 	slotHandler := handlers.NewSlotHandler(slotService)
 	preRegHandler := handlers.NewPreRegistrationHandler(preRegService, ticketService)
+	uploadHandler := handlers.NewUploadHandler(storageService)
 
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 
-	// CORS
+	allowedOrigins := config.ParseCORSAllowedOrigins(os.Getenv("CORS_ALLOWED_ORIGINS"))
+	if len(allowedOrigins) == 0 {
+		allowedOrigins = []string{
+			"http://localhost:3000",
+			"http://localhost:3001",
+			"https://quokkaq.v-b.tech",
+			"https://app.quokkaq.v-b.tech",
+		}
+	}
 	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   []string{"http://localhost:3000", "http://localhost:3001", "https://quokkaq.v-b.tech", "https://app.quokkaq.v-b.tech"},
+		AllowedOrigins:   allowedOrigins,
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
 		ExposedHeaders:   []string{"Link"},
 		AllowCredentials: true,
-		MaxAge:           300, // Maximum value not ignored by any of major browsers
+		MaxAge:           300,
 	}))
 
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
@@ -149,7 +163,6 @@ func main() {
 	})
 
 	r.Get("/swagger/*", func(w http.ResponseWriter, r *http.Request) {
-		// Read the swagger.json file
 		content, err := os.ReadFile("./docs/swagger.json")
 		if err != nil {
 			http.Error(w, "Failed to read swagger.json", http.StatusInternalServerError)
@@ -165,13 +178,13 @@ func main() {
 		})
 
 		if err != nil {
-			fmt.Printf("%v", err)
+			http.Error(w, "Failed to render API reference", http.StatusInternalServerError)
+			return
 		}
 
 		fmt.Fprintln(w, htmlContent)
 	})
 
-	// Serve the swagger.json file
 	r.Get("/docs/swagger.json", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "./docs/swagger.json")
 	})
@@ -181,7 +194,6 @@ func main() {
 		r.Post("/forgot-password", authHandler.RequestPasswordReset)
 		r.Post("/reset-password", authHandler.ResetPassword)
 
-		// Protected routes
 		r.Group(func(r chi.Router) {
 			r.Use(authmiddleware.JWTAuth)
 			r.Get("/me", authHandler.GetMe)
@@ -194,80 +206,81 @@ func main() {
 	})
 
 	r.Route("/users", func(r chi.Router) {
+		r.Use(authmiddleware.JWTAuth)
+		r.Use(authmiddleware.RequireAdmin(userRepo))
 		r.Post("/", userHandler.CreateUser)
 		r.Get("/", userHandler.GetAllUsers)
 		r.Get("/{id}", userHandler.GetUserByID)
 		r.Patch("/{id}", userHandler.UpdateUser)
 		r.Delete("/{id}", userHandler.DeleteUser)
-
-		// User-Unit operations
 		r.Get("/{id}/units", userHandler.GetUserUnits)
 		r.Post("/{id}/units/assign", userHandler.AssignUnit)
 		r.Post("/{id}/units/remove", userHandler.RemoveUnit)
 	})
 
 	r.Route("/units", func(r chi.Router) {
-		r.Post("/", unitHandler.CreateUnit)
 		r.Get("/", unitHandler.GetAllUnits)
 		r.Get("/{id}", unitHandler.GetUnitByID)
-		r.Patch("/{id}", unitHandler.UpdateUnit)
-		r.Delete("/{id}", unitHandler.DeleteUnit)
-
-		// Unit-specific routes
 		r.Post("/{unitId}/tickets", ticketHandler.CreateTicket)
 		r.Get("/{unitId}/tickets", ticketHandler.GetTicketsByUnit)
-		r.Post("/{unitId}/call-next", ticketHandler.CallNext)
 		r.Get("/{unitId}/services", serviceHandler.GetServicesByUnit)
-		r.Get("/{unitId}/services-tree", serviceHandler.GetServicesByUnit) // Alias for tree view
+		r.Get("/{unitId}/services-tree", serviceHandler.GetServicesByUnit)
 		r.Get("/{unitId}/counters", counterHandler.GetCountersByUnit)
-		r.Post("/{unitId}/counters", counterHandler.CreateCounter)
-		r.Get("/{unitId}/bookings", bookingHandler.GetBookingsByUnit)
-		r.Get("/{unitId}/shift/dashboard", shiftHandler.GetDashboardStats)
-		r.Get("/{unitId}/shift/queue", shiftHandler.GetQueueTickets)
-		r.Get("/{unitId}/shift/counters", shiftHandler.GetShiftCounters)
-		r.Post("/{unitId}/shift/eod", shiftHandler.ExecuteEndOfDay)
-
-		// Unit Materials
-		r.Post("/{unitId}/materials", unitHandler.AddMaterial)
 		r.Get("/{unitId}/materials", unitHandler.GetMaterials)
-		r.Delete("/{unitId}/materials/{materialId}", unitHandler.DeleteMaterial)
-
-		// Ad Settings
-		r.Patch("/{unitId}/ad-settings", unitHandler.UpdateAdSettings)
-
-		// Slot Configuration
-		r.Get("/{unitId}/slots/config", slotHandler.GetConfig)
-		r.Put("/{unitId}/slots/config", slotHandler.UpdateConfig)
-		r.Get("/{unitId}/slots/capacities", slotHandler.GetCapacities)
-		r.Put("/{unitId}/slots/capacities", slotHandler.UpdateCapacities)
-		r.Post("/{unitId}/slots/generate", slotHandler.Generate)
-		r.Get("/{unitId}/slots/day/{date}", slotHandler.GetDay)
-		r.Put("/{unitId}/slots/day/{date}", slotHandler.UpdateDay)
-
-		// Pre-registrations
-		r.Get("/{unitId}/pre-registrations", preRegHandler.GetByUnit)
-		r.Post("/{unitId}/pre-registrations", preRegHandler.Create)
-		r.Put("/{unitId}/pre-registrations/{id}", preRegHandler.Update)
 		r.Get("/{unitId}/pre-registrations/slots", preRegHandler.GetAvailableSlots)
 		r.Post("/{unitId}/pre-registrations/validate", preRegHandler.Validate)
+		r.Post("/{unitId}/pre-registrations", preRegHandler.Create)
 		r.Post("/{unitId}/pre-registrations/redeem", preRegHandler.Redeem)
+
+		r.Group(func(r chi.Router) {
+			r.Use(authmiddleware.JWTAuth)
+			r.Use(authmiddleware.RequireAdmin(userRepo))
+			r.Post("/", unitHandler.CreateUnit)
+			r.Patch("/{id}", unitHandler.UpdateUnit)
+			r.Delete("/{id}", unitHandler.DeleteUnit)
+		})
+
+		r.Group(func(r chi.Router) {
+			r.Use(authmiddleware.JWTAuth)
+			r.Use(authmiddleware.RequireUnitMember(userRepo))
+			r.Post("/{unitId}/call-next", ticketHandler.CallNext)
+			r.Get("/{unitId}/bookings", bookingHandler.GetBookingsByUnit)
+			r.Get("/{unitId}/shift/dashboard", shiftHandler.GetDashboardStats)
+			r.Get("/{unitId}/shift/queue", shiftHandler.GetQueueTickets)
+			r.Get("/{unitId}/shift/counters", shiftHandler.GetShiftCounters)
+			r.Post("/{unitId}/shift/eod", shiftHandler.ExecuteEndOfDay)
+			r.Post("/{unitId}/materials", unitHandler.AddMaterial)
+			r.Delete("/{unitId}/materials/{materialId}", unitHandler.DeleteMaterial)
+			r.Patch("/{unitId}/ad-settings", unitHandler.UpdateAdSettings)
+			r.Get("/{unitId}/slots/config", slotHandler.GetConfig)
+			r.Put("/{unitId}/slots/config", slotHandler.UpdateConfig)
+			r.Get("/{unitId}/slots/capacities", slotHandler.GetCapacities)
+			r.Put("/{unitId}/slots/capacities", slotHandler.UpdateCapacities)
+			r.Post("/{unitId}/slots/generate", slotHandler.Generate)
+			r.Get("/{unitId}/slots/day/{date}", slotHandler.GetDay)
+			r.Put("/{unitId}/slots/day/{date}", slotHandler.UpdateDay)
+			r.Get("/{unitId}/pre-registrations", preRegHandler.GetByUnit)
+			r.Put("/{unitId}/pre-registrations/{id}", preRegHandler.Update)
+			r.Post("/{unitId}/counters", counterHandler.CreateCounter)
+		})
 	})
 
 	r.Route("/services", func(r chi.Router) {
+		r.Use(authmiddleware.JWTAuth)
 		r.Post("/", serviceHandler.CreateService)
-		r.Get("/{id}", serviceHandler.GetServiceByID)
-		r.Put("/{id}", serviceHandler.UpdateService)
-		r.Delete("/{id}", serviceHandler.DeleteService)
+		r.Group(func(r chi.Router) {
+			r.Use(authmiddleware.RequireServiceUnit(userRepo, serviceRepo))
+			r.Get("/{id}", serviceHandler.GetServiceByID)
+			r.Put("/{id}", serviceHandler.UpdateService)
+			r.Delete("/{id}", serviceHandler.DeleteService)
+		})
 	})
 
 	r.Route("/counters", func(r chi.Router) {
-		// Public routes (if any)
 		r.Get("/{id}", counterHandler.GetCounterByID)
-
-		// Protected routes
 		r.Group(func(r chi.Router) {
 			r.Use(authmiddleware.JWTAuth)
-			r.Post("/", counterHandler.CreateCounter)
+			r.Use(authmiddleware.RequireCounterUnit(userRepo, counterRepo))
 			r.Put("/{id}", counterHandler.UpdateCounter)
 			r.Delete("/{id}", counterHandler.DeleteCounter)
 			r.Post("/{id}/occupy", counterHandler.Occupy)
@@ -278,13 +291,19 @@ func main() {
 	})
 
 	r.Route("/bookings", func(r chi.Router) {
+		r.Use(authmiddleware.JWTAuth)
 		r.Post("/", bookingHandler.CreateBooking)
-		r.Get("/{id}", bookingHandler.GetBookingByID)
-		r.Put("/{id}", bookingHandler.UpdateBooking)
-		r.Delete("/{id}", bookingHandler.DeleteBooking)
+		r.Group(func(r chi.Router) {
+			r.Use(authmiddleware.RequireBookingUnit(userRepo, bookingRepo))
+			r.Get("/{id}", bookingHandler.GetBookingByID)
+			r.Put("/{id}", bookingHandler.UpdateBooking)
+			r.Delete("/{id}", bookingHandler.DeleteBooking)
+		})
 	})
 
 	r.Route("/templates", func(r chi.Router) {
+		r.Use(authmiddleware.JWTAuth)
+		r.Use(authmiddleware.RequireAdmin(userRepo))
 		r.Post("/", templateHandler.CreateTemplate)
 		r.Get("/", templateHandler.GetAllTemplates)
 		r.Get("/{id}", templateHandler.GetTemplateByID)
@@ -294,24 +313,35 @@ func main() {
 	})
 
 	r.Route("/invitations", func(r chi.Router) {
-		r.Post("/", invitationHandler.CreateInvitation)
-		r.Get("/", invitationHandler.GetAllInvitations)
-		r.Delete("/{id}", invitationHandler.DeleteInvitation)
-		r.Patch("/{id}/resend", invitationHandler.ResendInvitation)
 		r.Get("/token/{token}", invitationHandler.GetInvitationByToken)
 		r.Post("/register", invitationHandler.RegisterUser)
+		r.Group(func(r chi.Router) {
+			r.Use(authmiddleware.JWTAuth)
+			r.Use(authmiddleware.RequireAdmin(userRepo))
+			r.Post("/", invitationHandler.CreateInvitation)
+			r.Get("/", invitationHandler.GetAllInvitations)
+			r.Delete("/{id}", invitationHandler.DeleteInvitation)
+			r.Patch("/{id}/resend", invitationHandler.ResendInvitation)
+		})
 	})
 
-	uploadHandler := handlers.NewUploadHandler(storageService)
-	r.Post("/upload", uploadHandler.UploadLogo)
+	r.Group(func(r chi.Router) {
+		r.Use(authmiddleware.JWTAuth)
+		r.Use(authmiddleware.RequireAdmin(userRepo))
+		r.Post("/upload", uploadHandler.UploadLogo)
+	})
 
 	r.Route("/tickets", func(r chi.Router) {
 		r.Get("/{id}", ticketHandler.GetTicketByID)
-		r.Patch("/{id}/status", ticketHandler.UpdateStatus)
-		r.Post("/{id}/recall", ticketHandler.Recall)
-		r.Post("/{id}/pick", ticketHandler.Pick)
-		r.Post("/{id}/transfer", ticketHandler.Transfer)
-		r.Post("/{id}/return", ticketHandler.ReturnToQueue)
+		r.Group(func(r chi.Router) {
+			r.Use(authmiddleware.JWTAuth)
+			r.Use(authmiddleware.RequireTicketUnit(userRepo, ticketRepo))
+			r.Patch("/{id}/status", ticketHandler.UpdateStatus)
+			r.Post("/{id}/recall", ticketHandler.Recall)
+			r.Post("/{id}/pick", ticketHandler.Pick)
+			r.Post("/{id}/transfer", ticketHandler.Transfer)
+			r.Post("/{id}/return", ticketHandler.ReturnToQueue)
+		})
 	})
 
 	port := os.Getenv("PORT")

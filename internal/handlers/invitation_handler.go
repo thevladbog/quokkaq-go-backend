@@ -19,8 +19,8 @@ func NewInvitationHandler(service services.InvitationService) *InvitationHandler
 type CreateInvitationRequest struct {
 	Email       string          `json:"email"`
 	TemplateID  string          `json:"templateId"`
-	TargetUnits json.RawMessage `json:"targetUnits"`
-	TargetRoles json.RawMessage `json:"targetRoles"`
+	TargetUnits json.RawMessage `json:"targetUnits" swaggertype:"object"`
+	TargetRoles json.RawMessage `json:"targetRoles" swaggertype:"object"`
 }
 
 // CreateInvitation godoc
@@ -94,6 +94,7 @@ func (h *InvitationHandler) DeleteInvitation(w http.ResponseWriter, r *http.Requ
 // @Summary      Resend an invitation
 // @Description  Resends an active invitation by its ID
 // @Tags         invitations
+// @Accept       json
 // @Param        id   path      string  true  "Invitation ID"
 // @Success      200  {object}  nil
 // @Failure      400  {string}  string "Bad Request"

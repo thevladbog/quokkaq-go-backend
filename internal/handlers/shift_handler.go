@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"quokkaq-go-backend/internal/middleware"
 	"quokkaq-go-backend/internal/services"
 
 	"github.com/go-chi/chi/v5"
@@ -77,15 +78,22 @@ func (h *ShiftHandler) GetShiftCounters(w http.ResponseWriter, r *http.Request) 
 // @Summary      Execute End of Day
 // @Description  Performs end of day operations for a unit
 // @Tags         shift
+// @Accept       json
 // @Produce      json
 // @Param        unitId path      string  true  "Unit ID"
 // @Success      200    {object}  map[string]interface{}
+// @Failure      401    {string}  string "Unauthorized"
 // @Failure      500    {string}  string "Internal Server Error"
 // @Router       /units/{unitId}/shift/eod [post]
 func (h *ShiftHandler) ExecuteEndOfDay(w http.ResponseWriter, r *http.Request) {
 	unitID := chi.URLParam(r, "unitId")
-	// TODO: Get UserID from context
-	result, err := h.service.ExecuteEndOfDay(unitID, nil)
+	uid, ok := middleware.GetUserIDFromContext(r.Context())
+	if !ok {
+		http.Error(w, "End of day requires an authenticated user; user id missing from request context", http.StatusUnauthorized)
+		return
+	}
+	actorID := uid
+	result, err := h.service.ExecuteEndOfDay(unitID, &actorID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

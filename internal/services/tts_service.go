@@ -1,13 +1,14 @@
 package services
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"time"
 )
 
 type TtsService interface {
-	GenerateAndUpload(text string, ticketID string) (string, error)
+	GenerateAndUpload(ctx context.Context, text string, ticketID string) (string, error)
 }
 
 type ttsService struct {
@@ -18,11 +19,15 @@ func NewTtsService(storage StorageService) TtsService {
 	return &ttsService{storage: storage}
 }
 
-func (s *ttsService) GenerateAndUpload(text string, ticketID string) (string, error) {
+func (s *ttsService) GenerateAndUpload(ctx context.Context, text string, ticketID string) (string, error) {
 	log.Printf("Generating TTS for text: %s", text)
 
-	// Simulate TTS generation delay
-	time.Sleep(1 * time.Second)
+	// Simulate TTS generation delay (respect cancellation / deadlines)
+	select {
+	case <-time.After(1 * time.Second):
+	case <-ctx.Done():
+		return "", ctx.Err()
+	}
 
 	// Create a dummy audio file content
 	// In a real implementation, this would come from a TTS provider API (Google Cloud TTS, AWS Polly, etc.)
@@ -31,7 +36,7 @@ func (s *ttsService) GenerateAndUpload(text string, ticketID string) (string, er
 	fileName := fmt.Sprintf("tts-%s.mp3", ticketID)
 
 	// Upload to S3/MinIO
-	url, _, err := s.storage.UploadFile(dummyAudioContent, fileName, "tts", "audio/mpeg")
+	url, _, err := s.storage.UploadFile(ctx, dummyAudioContent, fileName, "tts", "audio/mpeg")
 	if err != nil {
 		return "", err
 	}

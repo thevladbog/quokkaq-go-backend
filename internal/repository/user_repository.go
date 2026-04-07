@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"errors"
 	"quokkaq-go-backend/internal/models"
 	"quokkaq-go-backend/pkg/database"
 
@@ -23,6 +24,8 @@ type UserRepository interface {
 	DeletePasswordResetToken(id string) error
 	Count() (int64, error)
 	EnsureRoleExists(name string) (*models.Role, error)
+	IsAdmin(userID string) (bool, error)
+	IsAdminOrHasUnitAccess(userID, unitID string) (bool, error)
 }
 
 type userRepository struct {
@@ -136,4 +139,44 @@ func (r *userRepository) EnsureRoleExists(name string) (*models.Role, error) {
 		return nil, err
 	}
 	return &role, nil
+}
+
+func (r *userRepository) IsAdmin(userID string) (bool, error) {
+	user, err := r.FindByID(userID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return false, nil
+		}
+		return false, err
+	}
+	for _, ur := range user.Roles {
+		if ur.Role.Name == "admin" {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func (r *userRepository) IsAdminOrHasUnitAccess(userID, unitID string) (bool, error) {
+	if unitID == "" {
+		return false, nil
+	}
+	user, err := r.FindByID(userID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return false, nil
+		}
+		return false, err
+	}
+	for _, ur := range user.Roles {
+		if ur.Role.Name == "admin" {
+			return true, nil
+		}
+	}
+	for _, uu := range user.Units {
+		if uu.UnitID == unitID {
+			return true, nil
+		}
+	}
+	return false, nil
 }

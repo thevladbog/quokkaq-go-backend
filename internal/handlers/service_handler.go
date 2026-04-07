@@ -2,19 +2,23 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
+	"quokkaq-go-backend/internal/middleware"
 	"quokkaq-go-backend/internal/models"
+	"quokkaq-go-backend/internal/repository"
 	"quokkaq-go-backend/internal/services"
 
 	"github.com/go-chi/chi/v5"
 )
 
 type ServiceHandler struct {
-	service services.ServiceService
+	service  services.ServiceService
+	userRepo repository.UserRepository
 }
 
-func NewServiceHandler(service services.ServiceService) *ServiceHandler {
-	return &ServiceHandler{service: service}
+func NewServiceHandler(service services.ServiceService, userRepo repository.UserRepository) *ServiceHandler {
+	return &ServiceHandler{service: service, userRepo: userRepo}
 }
 
 // CreateService godoc
@@ -23,15 +27,36 @@ func NewServiceHandler(service services.ServiceService) *ServiceHandler {
 // @Tags         services
 // @Accept       json
 // @Produce      json
+// @Security     BearerAuth
 // @Param        service body models.Service true "Service Data"
 // @Success      201  {object}  models.Service
 // @Failure      400  {string}  string "Bad Request"
+// @Failure      401  {string}  string "Unauthorized"
+// @Failure      403  {string}  string "Forbidden"
 // @Failure      500  {string}  string "Internal Server Error"
 // @Router       /services [post]
 func (h *ServiceHandler) CreateService(w http.ResponseWriter, r *http.Request) {
+	userID, ok := middleware.GetUserIDFromContext(r.Context())
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
 	var service models.Service
 	if err := json.NewDecoder(r.Body).Decode(&service); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if service.UnitID == "" {
+		http.Error(w, "unitId is required", http.StatusBadRequest)
+		return
+	}
+	allowed, err := h.userRepo.IsAdminOrHasUnitAccess(userID, service.UnitID)
+	if err != nil {
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	if !allowed {
+		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
 
@@ -92,6 +117,8 @@ func (h *ServiceHandler) GetServiceByID(w http.ResponseWriter, r *http.Request) 
 // @Param        service body      models.Service  true  "Service Data"
 // @Success      200     {object}  models.Service
 // @Failure      400     {string}  string "Bad Request"
+// @Failure      409     {string}  string "Conflict (e.g. unit change not allowed)"
+// @Failure      404     {string}  string "Not found"
 // @Failure      500     {string}  string "Internal Server Error"
 // @Router       /services/{id} [put]
 func (h *ServiceHandler) UpdateService(w http.ResponseWriter, r *http.Request) {
@@ -104,6 +131,14 @@ func (h *ServiceHandler) UpdateService(w http.ResponseWriter, r *http.Request) {
 	service.ID = id
 
 	if err := h.service.UpdateService(&service); err != nil {
+		if errors.Is(err, services.ErrServiceUnitImmutable) {
+			http.Error(w, err.Error(), http.StatusConflict)
+			return
+		}
+		if repository.IsNotFound(err) {
+			http.Error(w, "Service not found", http.StatusNotFound)
+			return
+		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
