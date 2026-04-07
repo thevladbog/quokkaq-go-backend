@@ -78,6 +78,7 @@ func (h *ShiftHandler) GetShiftCounters(w http.ResponseWriter, r *http.Request) 
 // @Summary      Execute End of Day
 // @Description  Performs end of day operations for a unit
 // @Tags         shift
+// @Accept       json
 // @Produce      json
 // @Param        unitId path      string  true  "Unit ID"
 // @Success      200    {object}  map[string]interface{}

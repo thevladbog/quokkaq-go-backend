@@ -117,7 +117,7 @@ func (h *ServiceHandler) GetServiceByID(w http.ResponseWriter, r *http.Request) 
 // @Param        service body      models.Service  true  "Service Data"
 // @Success      200     {object}  models.Service
 // @Failure      400     {string}  string "Bad Request"
-// @Failure      403     {string}  string "Forbidden"
+// @Failure      409     {string}  string "Conflict (e.g. unit change not allowed)"
 // @Failure      404     {string}  string "Not found"
 // @Failure      500     {string}  string "Internal Server Error"
 // @Router       /services/{id} [put]
@@ -132,7 +132,7 @@ func (h *ServiceHandler) UpdateService(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.service.UpdateService(&service); err != nil {
 		if errors.Is(err, services.ErrServiceUnitImmutable) {
-			http.Error(w, err.Error(), http.StatusForbidden)
+			http.Error(w, err.Error(), http.StatusConflict)
 			return
 		}
 		if repository.IsNotFound(err) {

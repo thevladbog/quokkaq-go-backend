@@ -854,6 +854,9 @@ const docTemplate = `{
         "/invitations/{id}/resend": {
             "patch": {
                 "description": "Resends an active invitation by its ID",
+                "consumes": [
+                    "application/json"
+                ],
                 "tags": [
                     "invitations"
                 ],
@@ -1026,14 +1029,14 @@ const docTemplate = `{
                             "type": "string"
                         }
                     },
-                    "403": {
-                        "description": "Forbidden",
+                    "404": {
+                        "description": "Not found",
                         "schema": {
                             "type": "string"
                         }
                     },
-                    "404": {
-                        "description": "Not found",
+                    "409": {
+                        "description": "Conflict (e.g. unit change not allowed)",
                         "schema": {
                             "type": "string"
                         }
@@ -2211,6 +2214,9 @@ const docTemplate = `{
         "/units/{unitId}/shift/eod": {
             "post": {
                 "description": "Performs end of day operations for a unit",
+                "consumes": [
+                    "application/json"
+                ],
                 "produces": [
                     "application/json"
                 ],
@@ -2919,18 +2925,11 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "targetRoles": {
-                    "description": "Array of roleIds",
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
+                    "type": "object"
                 },
                 "targetUnits": {
-                    "description": "Stored permissions to be assigned upon acceptance",
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
+                    "description": "Stored permissions to be assigned upon acceptance (JSONB; OpenAPI as generic object)",
+                    "type": "object"
                 },
                 "token": {
                     "type": "string"

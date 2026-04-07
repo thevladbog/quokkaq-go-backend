@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"encoding/json"
 	"quokkaq-go-backend/internal/models"
 	"quokkaq-go-backend/pkg/database"
 
@@ -14,6 +15,8 @@ type UnitRepository interface {
 	// FindByIDLight loads only the unit row (no relations). Use for updates/auth checks; use FindByID for API responses that need nested data.
 	FindByIDLight(id string) (*models.Unit, error)
 	Update(unit *models.Unit) error
+	// UpdateConfig updates only the config JSONB column (no full Save — avoids wiping associations).
+	UpdateConfig(unitID string, config json.RawMessage) error
 	Delete(id string) error
 	AddMaterial(material *models.UnitMaterial) error
 	GetMaterials(unitID string) ([]models.UnitMaterial, error)
@@ -60,6 +63,10 @@ func (r *unitRepository) FindByIDLight(id string) (*models.Unit, error) {
 
 func (r *unitRepository) Update(unit *models.Unit) error {
 	return r.db.Save(unit).Error
+}
+
+func (r *unitRepository) UpdateConfig(unitID string, config json.RawMessage) error {
+	return r.db.Model(&models.Unit{}).Where("id = ?", unitID).Update("config", config).Error
 }
 
 func (r *unitRepository) Delete(id string) error {

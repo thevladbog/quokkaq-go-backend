@@ -136,15 +136,11 @@ definitions:
       status:
         type: string
       targetRoles:
-        description: Array of roleIds
-        items:
-          type: integer
-        type: array
+        type: object
       targetUnits:
-        description: Stored permissions to be assigned upon acceptance
-        items:
-          type: integer
-        type: array
+        description: Stored permissions to be assigned upon acceptance (JSONB; OpenAPI
+          as generic object)
+        type: object
       token:
         type: string
       updatedAt:
@@ -945,6 +941,8 @@ paths:
       - invitations
   /invitations/{id}/resend:
     patch:
+      consumes:
+      - application/json
       description: Resends an active invitation by its ID
       parameters:
       - description: Invitation ID
@@ -1129,12 +1127,12 @@ paths:
           description: Bad Request
           schema:
             type: string
-        "403":
-          description: Forbidden
-          schema:
-            type: string
         "404":
           description: Not found
+          schema:
+            type: string
+        "409":
+          description: Conflict (e.g. unit change not allowed)
           schema:
             type: string
         "500":
@@ -1895,6 +1893,8 @@ paths:
       - shift
   /units/{unitId}/shift/eod:
     post:
+      consumes:
+      - application/json
       description: Performs end of day operations for a unit
       parameters:
       - description: Unit ID

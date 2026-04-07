@@ -1,6 +1,7 @@
 package models
 
 import (
+	"encoding/json"
 	"time"
 )
 
@@ -44,9 +45,9 @@ type Invitation struct {
 
 	User *User `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"`
 
-	// Stored permissions to be assigned upon acceptance
-	TargetUnits []byte `gorm:"type:jsonb" json:"targetUnits"` // Array of {unitId, permissions}
-	TargetRoles []byte `gorm:"type:jsonb" json:"targetRoles"` // Array of roleIds
+	// Stored permissions to be assigned upon acceptance (JSONB; OpenAPI as generic object)
+	TargetUnits json.RawMessage `gorm:"type:jsonb" json:"targetUnits" swaggertype:"object"`
+	TargetRoles json.RawMessage `gorm:"type:jsonb" json:"targetRoles" swaggertype:"object"`
 }
 
 type MessageTemplate struct {

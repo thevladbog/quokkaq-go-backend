@@ -94,6 +94,7 @@ func (h *InvitationHandler) DeleteInvitation(w http.ResponseWriter, r *http.Requ
 // @Summary      Resend an invitation
 // @Description  Resends an active invitation by its ID
 // @Tags         invitations
+// @Accept       json
 // @Param        id   path      string  true  "Invitation ID"
 // @Success      200  {object}  nil
 // @Failure      400  {string}  string "Bad Request"
