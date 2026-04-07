@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"quokkaq-go-backend/internal/middleware"
 	"quokkaq-go-backend/internal/services"
 
 	"github.com/go-chi/chi/v5"
@@ -84,8 +85,11 @@ func (h *ShiftHandler) GetShiftCounters(w http.ResponseWriter, r *http.Request) 
 // @Router       /units/{unitId}/shift/eod [post]
 func (h *ShiftHandler) ExecuteEndOfDay(w http.ResponseWriter, r *http.Request) {
 	unitID := chi.URLParam(r, "unitId")
-	// TODO: Get UserID from context
-	result, err := h.service.ExecuteEndOfDay(unitID, nil)
+	var actorID *string
+	if uid, ok := middleware.GetUserIDFromContext(r.Context()); ok {
+		actorID = &uid
+	}
+	result, err := h.service.ExecuteEndOfDay(unitID, actorID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

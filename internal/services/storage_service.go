@@ -16,8 +16,8 @@ import (
 )
 
 type StorageService interface {
-	UploadFile(fileBytes []byte, fileName string, folder string, contentType string) (string, string, error)
-	DeleteFile(key string) error
+	UploadFile(ctx context.Context, fileBytes []byte, fileName string, folder string, contentType string) (string, string, error)
+	DeleteFile(ctx context.Context, key string) error
 }
 
 type storageService struct {
@@ -34,7 +34,7 @@ func NewStorageService() StorageService {
 	endpoint := os.Getenv("AWS_ENDPOINT")
 
 	// Load default config
-	cfg, err := config.LoadDefaultConfig(context.TODO(),
+	cfg, err := config.LoadDefaultConfig(context.Background(),
 		config.WithRegion(region),
 	)
 	if err != nil {
@@ -55,7 +55,7 @@ func NewStorageService() StorageService {
 		accessKey := os.Getenv("AWS_ACCESS_KEY_ID")
 		secretKey := os.Getenv("AWS_SECRET_ACCESS_KEY")
 
-		cfg, err = config.LoadDefaultConfig(context.TODO(),
+		cfg, err = config.LoadDefaultConfig(context.Background(),
 			config.WithRegion(region),
 			config.WithEndpointResolverWithOptions(customResolver),
 			config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(accessKey, secretKey, "")),
@@ -78,7 +78,7 @@ func NewStorageService() StorageService {
 	}
 }
 
-func (s *storageService) UploadFile(fileBytes []byte, fileName string, folder string, contentType string) (string, string, error) {
+func (s *storageService) UploadFile(ctx context.Context, fileBytes []byte, fileName string, folder string, contentType string) (string, string, error) {
 	if s.client == nil {
 		return "", "", fmt.Errorf("storage client not initialized")
 	}
@@ -86,7 +86,7 @@ func (s *storageService) UploadFile(fileBytes []byte, fileName string, folder st
 	ext := filepath.Ext(fileName)
 	key := fmt.Sprintf("%s/%s%s", folder, uuid.New().String(), ext)
 
-	_, err := s.client.PutObject(context.TODO(), &s3.PutObjectInput{
+	_, err := s.client.PutObject(ctx, &s3.PutObjectInput{
 		Bucket:      aws.String(s.bucketName),
 		Key:         aws.String(key),
 		Body:        bytes.NewReader(fileBytes),
@@ -118,12 +118,12 @@ func (s *storageService) UploadFile(fileBytes []byte, fileName string, folder st
 	return url, key, nil
 }
 
-func (s *storageService) DeleteFile(key string) error {
+func (s *storageService) DeleteFile(ctx context.Context, key string) error {
 	if s.client == nil {
 		return fmt.Errorf("storage client not initialized")
 	}
 
-	_, err := s.client.DeleteObject(context.TODO(), &s3.DeleteObjectInput{
+	_, err := s.client.DeleteObject(ctx, &s3.DeleteObjectInput{
 		Bucket: aws.String(s.bucketName),
 		Key:    aws.String(key),
 	})

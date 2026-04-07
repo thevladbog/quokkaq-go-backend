@@ -3,18 +3,21 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"quokkaq-go-backend/internal/middleware"
 	"quokkaq-go-backend/internal/models"
+	"quokkaq-go-backend/internal/repository"
 	"quokkaq-go-backend/internal/services"
 
 	"github.com/go-chi/chi/v5"
 )
 
 type ServiceHandler struct {
-	service services.ServiceService
+	service  services.ServiceService
+	userRepo repository.UserRepository
 }
 
-func NewServiceHandler(service services.ServiceService) *ServiceHandler {
-	return &ServiceHandler{service: service}
+func NewServiceHandler(service services.ServiceService, userRepo repository.UserRepository) *ServiceHandler {
+	return &ServiceHandler{service: service, userRepo: userRepo}
 }
 
 // CreateService godoc
@@ -29,9 +32,27 @@ func NewServiceHandler(service services.ServiceService) *ServiceHandler {
 // @Failure      500  {string}  string "Internal Server Error"
 // @Router       /services [post]
 func (h *ServiceHandler) CreateService(w http.ResponseWriter, r *http.Request) {
+	userID, ok := middleware.GetUserIDFromContext(r.Context())
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
 	var service models.Service
 	if err := json.NewDecoder(r.Body).Decode(&service); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if service.UnitID == "" {
+		http.Error(w, "unitId is required", http.StatusBadRequest)
+		return
+	}
+	allowed, err := h.userRepo.IsAdminOrHasUnitAccess(userID, service.UnitID)
+	if err != nil {
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	if !allowed {
+		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
 

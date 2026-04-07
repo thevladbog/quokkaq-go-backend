@@ -40,7 +40,7 @@ func (r *unitRepository) FindAll() ([]models.Unit, error) {
 
 func (r *unitRepository) FindByID(id string) (*models.Unit, error) {
 	var unit models.Unit
-	err := r.db.Preload("Services").Preload("Counters").Preload("Tickets").First(&unit, "id = ?", id).Error
+	err := r.db.Preload("Services").Preload("Counters").First(&unit, "id = ?", id).Error
 	if err != nil {
 		return nil, err
 	}

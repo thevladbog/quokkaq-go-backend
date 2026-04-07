@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"time"
@@ -31,7 +32,7 @@ func (s *ttsService) GenerateAndUpload(text string, ticketID string) (string, er
 	fileName := fmt.Sprintf("tts-%s.mp3", ticketID)
 
 	// Upload to S3/MinIO
-	url, _, err := s.storage.UploadFile(dummyAudioContent, fileName, "tts", "audio/mpeg")
+	url, _, err := s.storage.UploadFile(context.Background(), dummyAudioContent, fileName, "tts", "audio/mpeg")
 	if err != nil {
 		return "", err
 	}

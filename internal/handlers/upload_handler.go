@@ -46,7 +46,7 @@ func (h *UploadHandler) UploadLogo(w http.ResponseWriter, r *http.Request) {
 
 	// Upload to Storage (MinIO/S3)
 	// Folder: logos
-	url, _, err := h.storageService.UploadFile(fileBytes, header.Filename, "logos", header.Header.Get("Content-Type"))
+	url, _, err := h.storageService.UploadFile(r.Context(), fileBytes, header.Filename, "logos", header.Header.Get("Content-Type"))
 	if err != nil {
 		http.Error(w, "Failed to upload file", http.StatusInternalServerError)
 		return

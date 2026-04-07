@@ -152,7 +152,7 @@ func (h *UnitHandler) AddMaterial(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Upload to Storage
-	url, _, err := h.storageService.UploadFile(fileBytes, header.Filename, "materials", header.Header.Get("Content-Type"))
+	url, _, err := h.storageService.UploadFile(r.Context(), fileBytes, header.Filename, "materials", header.Header.Get("Content-Type"))
 	if err != nil {
 		http.Error(w, "Failed to upload file", http.StatusInternalServerError)
 		return

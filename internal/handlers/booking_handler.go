@@ -3,18 +3,21 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"quokkaq-go-backend/internal/middleware"
 	"quokkaq-go-backend/internal/models"
+	"quokkaq-go-backend/internal/repository"
 	"quokkaq-go-backend/internal/services"
 
 	"github.com/go-chi/chi/v5"
 )
 
 type BookingHandler struct {
-	service services.BookingService
+	service  services.BookingService
+	userRepo repository.UserRepository
 }
 
-func NewBookingHandler(service services.BookingService) *BookingHandler {
-	return &BookingHandler{service: service}
+func NewBookingHandler(service services.BookingService, userRepo repository.UserRepository) *BookingHandler {
+	return &BookingHandler{service: service, userRepo: userRepo}
 }
 
 // CreateBooking godoc
@@ -29,9 +32,27 @@ func NewBookingHandler(service services.BookingService) *BookingHandler {
 // @Failure      500  {string}  string "Internal Server Error"
 // @Router       /bookings [post]
 func (h *BookingHandler) CreateBooking(w http.ResponseWriter, r *http.Request) {
+	userID, ok := middleware.GetUserIDFromContext(r.Context())
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
 	var booking models.Booking
 	if err := json.NewDecoder(r.Body).Decode(&booking); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if booking.UnitID == "" {
+		http.Error(w, "unitId is required", http.StatusBadRequest)
+		return
+	}
+	allowed, err := h.userRepo.IsAdminOrHasUnitAccess(userID, booking.UnitID)
+	if err != nil {
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	if !allowed {
+		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
 
