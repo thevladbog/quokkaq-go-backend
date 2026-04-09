@@ -1,3 +1,5 @@
+> **Archived:** This repository is archived and no longer maintained. Active development continues in the monorepo **[thevladbog/quokkaq](https://github.com/thevladbog/quokkaq)**. The backend app now lives under [`apps/backend`](https://github.com/thevladbog/quokkaq/tree/main/apps/backend).
+
 <div align="center">
   <img src="./quokka-logo.svg" alt="QuokkaQ Logo" width="150"/>
   <h1>QuokkaQ Go Backend</h1>

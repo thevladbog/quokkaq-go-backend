@@ -1,3 +1,5 @@
+> **Архив:** этот репозиторий в архиве и больше не развивается. Актуальная разработка ведётся в монорепозитории **[thevladbog/quokkaq](https://github.com/thevladbog/quokkaq)**. Код бэкенда теперь в [`apps/backend`](https://github.com/thevladbog/quokkaq/tree/main/apps/backend).
+
 # QuokkaQ Go Backend - Документация на русском
 
 <div align="center">
